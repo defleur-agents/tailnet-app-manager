@@ -13,6 +13,8 @@ const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname));
 const INDEX_PATH = path.join(ROOT, 'index.html');
 const TAILNET_BASE = process.env.TAILNET_BASE_URL || 'https://srv1499816.tail6adf1a.ts.net';
 const GIT_CACHE_TTL_MS = Number(process.env.APPS_GIT_CACHE_MS || 180000);
+const RELEASES_URL = process.env.APPS_RELEASES_URL || 'https://humanitylabs.org/releases/apps.json';
+const RELEASES_CACHE_TTL_MS = Number(process.env.APPS_RELEASES_CACHE_MS || 600000);
 
 const GROUPS = {
   custom: {
@@ -54,6 +56,7 @@ const STATIC_ROUTES = {
 };
 
 const gitStateCache = new Map();
+let releaseCatalogCache = { at: 0, data: null };
 
 function send(res, code, body, headers={}) {
   res.writeHead(code, { 'Cache-Control':'no-store', ...headers });
@@ -125,6 +128,115 @@ function parseAheadBehind(raw) {
   };
 }
 
+function normalizeReleaseDate(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return null;
+  const direct = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : null;
+  if (direct) return direct;
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return null;
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function parseReleaseCatalog(payload) {
+  const fallback = {
+    source: RELEASES_URL,
+    updatedAt: null,
+    fetchedAt: new Date().toISOString(),
+    appsById: {},
+    error: null,
+  };
+
+  if (!payload || typeof payload !== 'object') return fallback;
+
+  const appsRaw = Array.isArray(payload.apps)
+    ? payload.apps
+    : Object.entries(payload.apps || {}).map(([id, row]) => ({ id, ...(row || {}) }));
+
+  const appsById = {};
+  for (const row of appsRaw) {
+    if (!row || typeof row !== 'object') continue;
+    const id = String(row.id || '').trim();
+    if (!id) continue;
+    const releaseDate = normalizeReleaseDate(row.releaseDate || row.date || row.latestDate);
+    const version = String(row.version || row.tag || '').trim() || null;
+    const commit = String(row.commit || row.sha || '').trim() || null;
+    appsById[id] = {
+      id,
+      name: String(row.name || '').trim() || id,
+      releaseDate,
+      version,
+      commit,
+      repo: String(row.repo || '').trim() || null,
+      notes: String(row.notes || '').trim() || null,
+    };
+  }
+
+  return {
+    source: String(payload.source || RELEASES_URL),
+    updatedAt: String(payload.updatedAt || '').trim() || null,
+    fetchedAt: new Date().toISOString(),
+    appsById,
+    error: null,
+  };
+}
+
+async function fetchReleaseCatalog({ force = false } = {}) {
+  const now = Date.now();
+  if (!force && releaseCatalogCache.data && (now - releaseCatalogCache.at) < RELEASES_CACHE_TTL_MS) {
+    return releaseCatalogCache.data;
+  }
+
+  const fallback = {
+    source: RELEASES_URL,
+    updatedAt: null,
+    fetchedAt: new Date().toISOString(),
+    appsById: {},
+    error: 'unavailable',
+  };
+
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 6000);
+    const res = await fetch(RELEASES_URL, {
+      method: 'GET',
+      headers: { 'accept': 'application/json' },
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+
+    if (!res.ok) {
+      const data = { ...fallback, error: `http_${res.status}` };
+      releaseCatalogCache = { at: now, data };
+      return data;
+    }
+
+    const payload = await res.json();
+    const parsed = parseReleaseCatalog(payload);
+    releaseCatalogCache = { at: now, data: parsed };
+    return parsed;
+  } catch (err) {
+    const data = {
+      ...fallback,
+      error: String(err?.message || err || 'fetch_failed'),
+    };
+    releaseCatalogCache = { at: now, data };
+    return data;
+  }
+}
+
+function formatVersionLabel(date, sha) {
+  const d = normalizeReleaseDate(date);
+  const shortSha = String(sha || '').trim();
+  if (d && shortSha) return `${d} · ${shortSha}`;
+  if (d) return d;
+  if (shortSha) return shortSha;
+  return 'unknown';
+}
+
 function cacheGitState(appId, data) {
   gitStateCache.set(appId, { at: Date.now(), data });
   return data;
@@ -142,7 +254,9 @@ async function computeGitState(app, { force = false } = {}) {
     status: 'n/a',
     branch: null,
     localSha: null,
+    localCommitDate: null,
     remoteSha: null,
+    remoteCommitDate: null,
     upstream: null,
     checkedAt: new Date().toISOString(),
     reason: null,
@@ -163,22 +277,25 @@ async function computeGitState(app, { force = false } = {}) {
     return cacheGitState(app.id, { ...fallback, reason: 'not_git_repo' });
   }
 
-  const [dirtyRes, branchRes, localShaRes, upstreamRes] = await Promise.all([
+  const [dirtyRes, branchRes, localShaRes, localCommitDateRes, upstreamRes] = await Promise.all([
     git(app.repoPath, ['status', '--porcelain']),
     git(app.repoPath, ['rev-parse', '--abbrev-ref', 'HEAD']),
     git(app.repoPath, ['rev-parse', '--short=10', 'HEAD']),
+    git(app.repoPath, ['show', '-s', '--date=short', '--format=%cd', 'HEAD']),
     git(app.repoPath, ['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}']),
   ]);
 
   const dirty = dirtyRes.ok ? Boolean(dirtyRes.out) : false;
   const branch = branchRes.ok ? branchRes.out : null;
   const localSha = localShaRes.ok ? localShaRes.out : null;
+  const localCommitDate = localCommitDateRes.ok ? normalizeReleaseDate(localCommitDateRes.out) : null;
   const upstream = upstreamRes.ok ? upstreamRes.out : null;
 
   let canCheck = false;
   let ahead = 0;
   let behind = 0;
   let remoteSha = null;
+  let remoteCommitDate = null;
   let fetchError = null;
 
   if (upstream) {
@@ -193,12 +310,14 @@ async function computeGitState(app, { force = false } = {}) {
 
     if (!fetchRes.ok) fetchError = fetchRes.err || fetchRes.out || 'fetch_failed';
 
-    const [remoteShaRes, countsRes] = await Promise.all([
+    const [remoteShaRes, countsRes, remoteCommitDateRes] = await Promise.all([
       git(app.repoPath, ['rev-parse', '--short=10', upstream]),
       git(app.repoPath, ['rev-list', '--left-right', '--count', `HEAD...${upstream}`]),
+      git(app.repoPath, ['show', '-s', '--date=short', '--format=%cd', upstream]),
     ]);
 
     if (remoteShaRes.ok) remoteSha = remoteShaRes.out;
+    if (remoteCommitDateRes.ok) remoteCommitDate = normalizeReleaseDate(remoteCommitDateRes.out);
     if (countsRes.ok) {
       const parsed = parseAheadBehind(countsRes.out);
       ahead = parsed.ahead;
@@ -227,7 +346,9 @@ async function computeGitState(app, { force = false } = {}) {
     status,
     branch,
     localSha,
+    localCommitDate,
     remoteSha,
+    remoteCommitDate,
     upstream,
     checkedAt: new Date().toISOString(),
     reason: null,
@@ -235,7 +356,7 @@ async function computeGitState(app, { force = false } = {}) {
   });
 }
 
-async function appStatus(app, { forceGit = false } = {}) {
+async function appStatus(app, { forceGit = false, releaseCatalog = null } = {}) {
   const [installed, active, enabled, health, gitState] = await Promise.all([
     exists(app.repoPath),
     systemctl(['is-active', app.service]),
@@ -243,6 +364,14 @@ async function appStatus(app, { forceGit = false } = {}) {
     checkHealth(app.healthUrl),
     computeGitState(app, { force: forceGit }),
   ]);
+
+  const releaseInfo = releaseCatalog?.appsById?.[app.id] || null;
+  const localDate = gitState.localCommitDate || null;
+  const localSha = gitState.localSha || null;
+  const latestDate = releaseInfo?.releaseDate || gitState.remoteCommitDate || null;
+  const latestSha = releaseInfo?.commit || gitState.remoteSha || null;
+  const releaseOutdated = Boolean(localDate && latestDate && latestDate > localDate);
+  const effectiveUpdateAvailable = Boolean(gitState.updateAvailable || releaseOutdated);
 
   return {
     ...app,
@@ -252,7 +381,25 @@ async function appStatus(app, { forceGit = false } = {}) {
     healthCode: health.code,
     healthOk: health.ok,
     publicUrl: `${TAILNET_BASE}${app.path}`,
-    git: gitState,
+    git: {
+      ...gitState,
+      updateAvailable: effectiveUpdateAvailable,
+    },
+    release: {
+      source: releaseInfo ? 'humanitylabs' : 'git',
+      localDate,
+      localCommit: localSha,
+      localLabel: formatVersionLabel(localDate, localSha),
+      latestDate,
+      latestCommit: latestSha,
+      latestVersion: releaseInfo?.version || null,
+      latestLabel: releaseInfo?.version
+        ? `${releaseInfo.version} · ${formatVersionLabel(latestDate, latestSha)}`
+        : formatVersionLabel(latestDate, latestSha),
+      outdated: releaseOutdated,
+      releaseManifestDate: releaseInfo?.releaseDate || null,
+      releaseManifestVersion: releaseInfo?.version || null,
+    },
     canToggleAutostart: Boolean(app.service),
   };
 }
@@ -369,8 +516,20 @@ const server = http.createServer(async (req, res) => {
 
     if (pathname === `${BASE}/api/status`) {
       const forceGit = url.searchParams.get('refresh') === '1';
-      const apps = await Promise.all(APPS.map(app => appStatus(app, { forceGit })));
-      return send(res, 200, JSON.stringify({ ok:true, apps, groups: GROUPS }), { 'Content-Type': MIME['.json'] });
+      const releaseCatalog = await fetchReleaseCatalog({ force: forceGit });
+      const apps = await Promise.all(APPS.map(app => appStatus(app, { forceGit, releaseCatalog })));
+      return send(res, 200, JSON.stringify({
+        ok:true,
+        apps,
+        groups: GROUPS,
+        releases: {
+          source: releaseCatalog?.source || RELEASES_URL,
+          updatedAt: releaseCatalog?.updatedAt || null,
+          fetchedAt: releaseCatalog?.fetchedAt || null,
+          count: Object.keys(releaseCatalog?.appsById || {}).length,
+          error: releaseCatalog?.error || null,
+        },
+      }), { 'Content-Type': MIME['.json'] });
     }
 
     if (pathname === `${BASE}/api/action`) {

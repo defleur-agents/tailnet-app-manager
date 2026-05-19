@@ -14,6 +14,9 @@ Clean mobile-first dashboard for local Tailnet apps.
 - Responsive card grid (mobile-friendly)
 - Per-app icon + status pills
 - Open / Restart / Update actions
+- Installed version visibility (date + short commit)
+- Latest release visibility (from `https://humanitylabs.org/releases/apps.json`)
+- Update-available signals when local is behind git upstream or release date
 - PWA manifest + install icons
 
 ## Run
@@ -31,3 +34,5 @@ Override with env vars:
 - `APPS_HOST`
 - `APPS_PORT`
 - `TAILNET_BASE_URL`
+- `APPS_RELEASES_URL` (default: `https://humanitylabs.org/releases/apps.json`)
+- `APPS_RELEASES_CACHE_MS` (default: `600000`)

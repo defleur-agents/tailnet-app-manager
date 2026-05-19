@@ -99,6 +99,19 @@
       font-size:.72rem;
       color:var(--muted);
     }
+    .version-stack {
+      display:grid;
+      gap:4px;
+      font-size:.69rem;
+      color:#a9b1c0;
+      line-height:1.35;
+      border-top:1px dashed #2a3140;
+      border-bottom:1px dashed #2a3140;
+      padding:8px 0;
+    }
+    .version-line { display:flex; gap:6px; flex-wrap:wrap; }
+    .version-label { color:#8190a8; min-width:58px; }
+    .version-source { color:#73829a; }
     .update-ok { color:var(--ok); }
     .update-warn { color:var(--warn); }
     .update-bad { color:var(--bad); }
@@ -206,14 +219,31 @@
 
     function updateFor(app) {
       const g = app.git || {};
-      if (!app.canUpdate || !g.tracked || !g.canCheck) {
-        return { canUpdate:false, updateLabel:'Latest' };
+      const release = app.release || {};
+      const updateAvailable = !!g.updateAvailable || !!release.outdated;
+      const canGitUpdate = !!app.canUpdate && !!g.tracked && !!g.canCheck && !g.diverged && Number(g.ahead || 0) === 0;
+
+      if (!canGitUpdate) {
+        return {
+          canUpdate:false,
+          updateLabel:updateAvailable ? 'Manual' : 'Latest',
+          updateAvailable,
+          reason:updateAvailable
+            ? 'Update available, but this repo is not in a safe auto-update state.'
+            : 'Latest',
+        };
       }
-      const behind = Number(g.behind || 0);
-      if (behind > 0) {
-        return { canUpdate:true, updateLabel:'Update' };
+
+      if (updateAvailable) {
+        return {
+          canUpdate:true,
+          updateLabel:'Update',
+          updateAvailable:true,
+          reason:Number(g.behind || 0) > 0 ? `Behind by ${Number(g.behind || 0)} commit(s).` : 'Older than latest release date.',
+        };
       }
-      return { canUpdate:false, updateLabel:'Latest' };
+
+      return { canUpdate:false, updateLabel:'Latest', updateAvailable:false, reason:'Latest' };
     }
 
     async function api(path, opts) {
@@ -229,6 +259,17 @@
       const state = stateFor(app);
       const update = updateFor(app);
       const toggleDisabled = !app.canToggleAutostart;
+      const release = app.release || {};
+      const localLabel = release.localLabel || 'unknown';
+      const latestLabel = release.latestLabel || 'unknown';
+      const latestSource = release.source === 'humanitylabs' ? 'humanitylabs.org' : 'git upstream';
+      const updateTone = update.updateAvailable ? 'update-warn' : 'update-ok';
+      const updateSummary = update.updateAvailable
+        ? (update.canUpdate ? 'Update available' : 'Update available (manual check needed)')
+        : 'Up to date';
+      const updateBtnTitle = update.canUpdate
+        ? 'Pull latest code and restart this app'
+        : (update.reason || 'No update action needed');
 
       return `
         <article class="card">
@@ -248,13 +289,23 @@
 
           <div class="status-row ${state.cls}">
             <span class="state-dot"></span>
-            <span class="state-label">${state.label}${update.canUpdate ? ' • Update available' : ''}</span>
+            <span class="state-label">${state.label}${update.updateAvailable ? ' • Update available' : ''}</span>
+          </div>
+
+          <div class="meta-row">
+            <span class="${updateTone}">${esc(updateSummary)}</span>
+            <span class="version-source">Latest from ${esc(latestSource)}</span>
+          </div>
+
+          <div class="version-stack">
+            <div class="version-line"><span class="version-label">Installed:</span><span>${esc(localLabel)}</span></div>
+            <div class="version-line"><span class="version-label">Latest:</span><span>${esc(latestLabel)}</span></div>
           </div>
 
           <div class="actions">
             <a class="btn open" href="${esc(app.publicUrl)}" target="_blank" rel="noopener noreferrer">Open</a>
             <button class="btn" onclick="runAction('${esc(app.id)}','restart')">Restart</button>
-            <button class="btn ${update.canUpdate ? 'primary' : ''}" ${update.canUpdate ? '' : 'disabled'} onclick="runAction('${esc(app.id)}','update')">${esc(update.updateLabel)}</button>
+            <button class="btn ${update.canUpdate ? 'primary' : ''}" title="${esc(updateBtnTitle)}" ${update.canUpdate ? '' : 'disabled'} onclick="runAction('${esc(app.id)}','update')">${esc(update.updateLabel)}</button>
           </div>
         </article>
       `;
@@ -284,7 +335,11 @@
         if (groups.base && byGroup.base.length) out.push(renderGroup(groups.base, byGroup.base));
 
         groupsEl.innerHTML = out.join('');
-        updatedAt.textContent = `Updated ${new Date().toLocaleTimeString()}`;
+        const releaseMeta = data.releases || {};
+        const releaseSuffix = releaseMeta.updatedAt
+          ? ` · release list ${new Date(releaseMeta.updatedAt).toLocaleDateString()}`
+          : (releaseMeta.error ? ' · release list unavailable' : '');
+        updatedAt.textContent = `Updated ${new Date().toLocaleTimeString()}${releaseSuffix}`;
       } catch (err) {
         log.textContent = `Refresh failed: ${err.message}`;
       }
