@@ -11,7 +11,12 @@ const PORT = Number(process.env.APPS_PORT || 8786);
 const BASE = '/apps';
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname));
 const INDEX_PATH = path.join(ROOT, 'index.html');
-const TAILNET_BASE = process.env.TAILNET_BASE_URL || 'https://srv1499816.tail6adf1a.ts.net';
+const TAILNET_BASE = (process.env.TAILNET_BASE_URL || '').replace(/\/+$/, '');
+const DEFAULT_REPO_ROOT = process.env.TAILNET_REPO_ROOT
+  || process.env.AGENT_WORKSPACE
+  || process.env.HERMES_WORKSPACE
+  || process.env.OPENCLAW_WORKSPACE
+  || path.resolve(ROOT, '..');
 const GIT_CACHE_TTL_MS = Number(process.env.APPS_GIT_CACHE_MS || 180000);
 const RELEASES_URL = process.env.APPS_RELEASES_URL || 'https://humanitylabs.org/releases/apps.json';
 const RELEASES_CACHE_TTL_MS = Number(process.env.APPS_RELEASES_CACHE_MS || 600000);
@@ -29,16 +34,20 @@ const GROUPS = {
   },
 };
 
+function repoPath(dirName, envName) {
+  return process.env[envName] || path.join(DEFAULT_REPO_ROOT, dirName);
+}
+
 const APPS = [
-  { id:'appsmanager', group:'custom', name:'Apps Manager', path:'/apps', service:'apps-manager.service', repoPath:'/root/.openclaw/workspace/AGENT-OSCAR/Code/tailnet-app-manager', healthUrl:'http://127.0.0.1:8786/apps/api/health', canUpdate:true, icon:'/apps/assets/app-appsmanager.png' },
-  { id:'mizel', group:'custom', name:'Mizel', path:'/mizel', service:'mizel-local.service', repoPath:'/root/.openclaw/workspace/AGENT-OSCAR/Code/mizel', healthUrl:'http://127.0.0.1:8791/mizel', canUpdate:true, icon:'/apps/assets/app-mizel.png' },
-  { id:'mindfeed', group:'custom', name:'MindFeed', path:'/mindfeed', service:'mindfeed.service', repoPath:'/root/.openclaw/workspace/AGENT-OSCAR/Code/mindfeed', healthUrl:'http://127.0.0.1:8787/mindfeed', canUpdate:true, icon:'/apps/assets/app-mindfeed.png' },
-  { id:'bookcompressor', group:'custom', name:'BookCompressor', path:'/bookcompressor', service:'bookcompressor.service', repoPath:'/root/.openclaw/workspace/AGENT-OSCAR/Code/book-compressor', healthUrl:'http://127.0.0.1:3000/bookcompressor/api/health', canUpdate:true, icon:'/apps/assets/app-bookcompressor.png' },
-  { id:'clawtabs', group:'custom', name:'ClawTabs', path:'/clawtabs', service:'clawtabs.service', repoPath:'/root/.openclaw/workspace/AGENT-OSCAR/Code/claw-tabs', healthUrl:'http://127.0.0.1:8788/clawtabs/api/health', canUpdate:true, icon:'/apps/assets/app-clawtabs.png' },
-  { id:'browser', group:'base', name:'Browser', path:'/browser', service:'remote-browser.service', repoPath:'/root/.openclaw/workspace/AGENT-OSCAR/Code/tailnet-browser', healthUrl:'http://127.0.0.1:6080', canUpdate:true, icon:'/apps/assets/app-browser.png' },
-  { id:'terminal', group:'base', name:'Terminal', path:'/terminal', service:'web-terminal.service', repoPath:'/root/.openclaw/workspace/AGENT-OSCAR/Code/tailnet-terminal', healthUrl:'http://127.0.0.1:7681', canUpdate:true, icon:'/apps/assets/app-terminal.png' },
-  { id:'localstt', group:'base', name:'LocalSTT', path:'/stt', service:'local-stt.service', repoPath:'/root/.openclaw/workspace/AGENT-OSCAR/Code/local-stt', healthUrl:'http://127.0.0.1:9099/health', canUpdate:true, icon:'/apps/assets/app-localstt.png' },
-  { id:'localllm', group:'base', name:'LocalLLM', path:'/llm/v1/models', service:'local-llm.service', repoPath:'/root/.openclaw/workspace/AGENT-OSCAR/Code/local-llm', healthUrl:'http://127.0.0.1:9098/v1/models', canUpdate:true, icon:'/apps/assets/app-localllm.png' },
+  { id:'appsmanager', group:'custom', name:'Apps Manager', path:'/apps', service:'apps-manager.service', repoPath:repoPath('tailnet-app-manager', 'APPSMANAGER_REPO_PATH'), healthUrl:'http://127.0.0.1:8786/apps/api/health', canUpdate:true, icon:'/apps/assets/app-appsmanager.png' },
+  { id:'mizel', group:'custom', name:'Mizel', path:'/mizel', service:'mizel-local.service', repoPath:repoPath('mizel', 'MIZEL_REPO_PATH'), healthUrl:'http://127.0.0.1:8791/mizel', canUpdate:true, icon:'/apps/assets/app-mizel.png' },
+  { id:'mindfeed', group:'custom', name:'MindFeed', path:'/mindfeed', service:'mindfeed.service', repoPath:repoPath('mindfeed', 'MINDFEED_REPO_PATH'), healthUrl:'http://127.0.0.1:8787/mindfeed', canUpdate:true, icon:'/apps/assets/app-mindfeed.png' },
+  { id:'bookcompressor', group:'custom', name:'BookCompressor', path:'/bookcompressor', service:'bookcompressor.service', repoPath:repoPath('bookcompressor', 'BOOKCOMPRESSOR_REPO_PATH'), healthUrl:'http://127.0.0.1:3000/bookcompressor/api/health', canUpdate:true, icon:'/apps/assets/app-bookcompressor.png' },
+  { id:'clawtabs', group:'custom', name:'ClawTabs', path:'/clawtabs', service:'clawtabs.service', repoPath:repoPath('claw-tabs', 'CLAWTABS_REPO_PATH'), healthUrl:'http://127.0.0.1:8788/clawtabs/api/health', canUpdate:true, icon:'/apps/assets/app-clawtabs.png' },
+  { id:'browser', group:'base', name:'Browser', path:'/browser', service:'remote-browser.service', repoPath:repoPath('tailnet-browser', 'BROWSER_REPO_PATH'), healthUrl:'http://127.0.0.1:6080', canUpdate:true, icon:'/apps/assets/app-browser.png' },
+  { id:'terminal', group:'base', name:'Terminal', path:'/terminal', service:'web-terminal.service', repoPath:repoPath('tailnet-terminal', 'TERMINAL_REPO_PATH'), healthUrl:'http://127.0.0.1:7681', canUpdate:true, icon:'/apps/assets/app-terminal.png' },
+  { id:'localstt', group:'base', name:'LocalSTT', path:'/stt', service:'local-stt.service', repoPath:repoPath('local-stt', 'LOCALSTT_REPO_PATH'), healthUrl:'http://127.0.0.1:9099/health', canUpdate:true, icon:'/apps/assets/app-localstt.png' },
+  { id:'localllm', group:'base', name:'LocalLLM', path:'/llm/v1/models', service:'local-llm.service', repoPath:repoPath('local-llm', 'LOCALLLM_REPO_PATH'), healthUrl:'http://127.0.0.1:9098/v1/models', canUpdate:true, icon:'/apps/assets/app-localllm.png' },
 ];
 
 const MIME = {
@@ -380,7 +389,7 @@ async function appStatus(app, { forceGit = false, releaseCatalog = null } = {}) 
     serviceEnabled: enabled.ok && enabled.out.includes('enabled'),
     healthCode: health.code,
     healthOk: health.ok,
-    publicUrl: `${TAILNET_BASE}${app.path}`,
+    publicUrl: `${TAILNET_BASE || ''}${app.path}`,
     git: {
       ...gitState,
       updateAvailable: effectiveUpdateAvailable,
