@@ -61,6 +61,23 @@ function normalizeAppHint(hint) {
   return { ...hint, repoPath, postUpdate };
 }
 
+function normalizeAppHintKey(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '/';
+  if (!/^https:\/\//i.test(raw)) return normalizeRoutePath(raw);
+
+  let url;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new Error(`Invalid absolute app route in config: ${raw}`);
+  }
+  if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash) {
+    throw new Error(`Absolute app routes must be credential-free HTTPS URLs without query or fragment: ${raw}`);
+  }
+  return `${url.origin}${normalizeRoutePath(url.pathname)}`;
+}
+
 const LOCAL_CONFIG = await loadLocalConfig();
 const HIDDEN_SERVE_PATHS = new Set(
   (Array.isArray(LOCAL_CONFIG.hiddenPaths) ? LOCAL_CONFIG.hiddenPaths : [])
@@ -102,7 +119,7 @@ const GROUPS = {
 
 const configuredAppHints = Object.fromEntries(
   Object.entries(LOCAL_CONFIG.apps && typeof LOCAL_CONFIG.apps === 'object' ? LOCAL_CONFIG.apps : {})
-    .map(([publicPath, hint]) => [normalizeRoutePath(publicPath), normalizeAppHint(hint)]),
+    .map(([publicPath, hint]) => [normalizeAppHintKey(publicPath), normalizeAppHint(hint)]),
 );
 const APP_HINTS = { ...configuredAppHints };
 const configuredSelfHint = configuredAppHints[BASE] || {};
@@ -276,6 +293,23 @@ async function systemctl(args) {
   return runSystem();
 }
 
+async function systemctlRead(args) {
+  const scope = String(process.env.APPS_SYSTEMCTL_SCOPE || 'auto').toLowerCase();
+  if (scope !== 'auto') return systemctl(args);
+
+  const service = String(args.at(-1) || '').trim();
+  if (!service) return systemctl(args);
+  const userUnit = await runExec(
+    'systemctl',
+    ['--user', 'show', service, '--property=LoadState', '--value'],
+    { timeout: 15000, maxBuffer: 2_000_000 },
+  );
+  if (userUnit.ok && userUnit.out && userUnit.out !== 'not-found') {
+    return runExec('systemctl', ['--user', ...args], { timeout: 15000, maxBuffer: 2_000_000 });
+  }
+  return runExec('systemctl', args, { timeout: 15000, maxBuffer: 2_000_000 });
+}
+
 async function git(repoPath, args, opts = {}) {
   return runExec('git', ['-C', repoPath, ...args], {
     timeout: opts.timeout ?? 30000,
@@ -362,8 +396,18 @@ function routeId(value) {
   return key.replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'app';
 }
 
-function routeActionKey(publicPath) {
-  return `p_${Buffer.from(normalizeRoutePath(publicPath), 'utf8').toString('base64url')}`;
+function routeIdentity(host, publicPath) {
+  const rawHost = String(host || '').trim().toLowerCase();
+  if (!rawHost) return normalizeRoutePath(publicPath);
+  try {
+    return `${new URL(`https://${rawHost}`).origin}${normalizeRoutePath(publicPath)}`;
+  } catch {
+    return `https://${rawHost}${normalizeRoutePath(publicPath)}`;
+  }
+}
+
+function routeActionKey(host, publicPath) {
+  return `p_${Buffer.from(routeIdentity(host, publicPath), 'utf8').toString('base64url')}`;
 }
 
 function titleFromPath(value) {
@@ -833,17 +877,28 @@ async function tailscale(args, opts = {}) {
 
 function hostFromTailnetBase() {
   if (!TAILNET_BASE_ENV) return null;
-  try { return new URL(TAILNET_BASE_ENV).hostname; } catch { return null; }
+  try { return new URL(TAILNET_BASE_ENV).host.toLowerCase(); } catch { return null; }
 }
 
 function appSortKey(app) {
-  if (app.path === BASE) return `000-${app.path}`;
-  return `100-${app.path}`;
+  if (app.path === BASE) return `000-${app.publicUrl}`;
+  return `100-${app.path}-${app.publicUrl}`;
 }
 
 function extractProxyUrl(handler) {
   if (!handler || typeof handler !== 'object') return null;
   return typeof handler.Proxy === 'string' ? handler.Proxy : null;
+}
+
+function proxyTargetsSelf(proxyUrl) {
+  try {
+    const url = new URL(proxyUrl);
+    const loopback = ['127.0.0.1', 'localhost', '::1', '[::1]'].includes(url.hostname);
+    const port = url.port || (url.protocol === 'https:' ? '443' : '80');
+    return loopback && Number(port) === PORT;
+  } catch {
+    return false;
+  }
 }
 
 function portFromUrl(value) {
@@ -882,7 +937,7 @@ async function findServiceByPort(port) {
 async function firstExistingService(candidates) {
   const existing = [];
   for (const service of candidates.filter(Boolean)) {
-    const cat = await systemctl(['cat', service]);
+    const cat = await systemctlRead(['cat', service]);
     if (cat.ok) existing.push(service);
   }
   return existing.length === 1 ? existing[0] : null;
@@ -917,7 +972,7 @@ async function primaryServiceForProxy(proxyService) {
   if (!/(?:subpath-proxy|slash-redirect)\.service$/.test(proxyService)) {
     return { service: proxyService, ambiguous: false };
   }
-  const cat = await systemctl(['cat', proxyService]);
+  const cat = await systemctlRead(['cat', proxyService]);
   if (!cat.ok) return { service: proxyService, ambiguous: false };
   const candidates = serviceCandidatesFromUnit(cat.out).filter(service => service !== proxyService);
   if (candidates.length > 1) return { service: null, ambiguous: true };
@@ -936,7 +991,7 @@ function absoluteExecPathFromLine(line) {
 
 async function repoPathForService(service) {
   if (!service) return null;
-  const cat = await systemctl(['cat', service]);
+  const cat = await systemctlRead(['cat', service]);
   if (!cat.ok) return null;
   const lines = cat.out.split('\n');
   const workingDir = lines.find(line => line.startsWith('WorkingDirectory='));
@@ -970,24 +1025,54 @@ async function discoverServedApps(releaseCatalog) {
 
   let payload = {};
   try { payload = JSON.parse(serve.out || '{}'); } catch {}
-  const web = payload.Web || {};
+  const web = payload.Web && typeof payload.Web === 'object' ? payload.Web : {};
   const preferredHost = hostFromTailnetBase();
-  const host = preferredHost && web[preferredHost] ? preferredHost : Object.keys(web)[0];
-  const handlers = host ? (web[host]?.Handlers || {}) : {};
-  const launchBase = host ? `https://${host}` : TAILNET_ORIGIN;
+  const hosts = Object.keys(web).sort((left, right) => {
+    if (left.toLowerCase() === preferredHost) return -1;
+    if (right.toLowerCase() === preferredHost) return 1;
+    return left.localeCompare(right);
+  });
+
+  const routeEntries = [];
+  for (const host of hosts) {
+    const handlers = web[host]?.Handlers && typeof web[host].Handlers === 'object'
+      ? web[host].Handlers
+      : {};
+    for (const [rawPath, handler] of Object.entries(handlers)) {
+      const servedPath = normalizeRoutePath(rawPath);
+      const proxyUrl = extractProxyUrl(handler);
+      if (!proxyUrl) continue;
+
+      const selfProxy = proxyTargetsSelf(proxyUrl)
+        && (servedPath === BASE || (servedPath === '/' && host.toLowerCase() === preferredHost));
+      const publicPath = selfProxy ? BASE : servedPath;
+      const exactHint = APP_HINTS[routeIdentity(host, publicPath)] || null;
+      if (servedPath === '/' && !selfProxy && !INCLUDE_ROOT_APP && !exactHint) continue;
+      if (servePathHidden(publicPath)) continue;
+
+      routeEntries.push({
+        host,
+        handlers,
+        servedPath,
+        publicPath,
+        proxyUrl,
+        selfProxy,
+      });
+    }
+  }
+
+  const pathCounts = new Map();
+  for (const entry of routeEntries) {
+    pathCounts.set(entry.publicPath, (pathCounts.get(entry.publicPath) || 0) + 1);
+  }
 
   const apps = [];
-  for (const [rawPath, handler] of Object.entries(handlers)) {
-    const publicPath = normalizeRoutePath(rawPath);
-    if (publicPath === '/' && !INCLUDE_ROOT_APP) continue;
-    if (servePathHidden(publicPath)) continue;
-
-    // Every canonical served route is an app. Hints enrich operational metadata;
-    // the explicit exclusions above remove aliases, downloads, and QA fixtures.
-    const hint = APP_HINTS[publicPath] || {};
-
-    const proxyUrl = extractProxyUrl(handler);
-    if (!proxyUrl) continue;
+  for (const entry of routeEntries) {
+    const { host, handlers, publicPath, proxyUrl, selfProxy } = entry;
+    const exactHint = APP_HINTS[routeIdentity(host, publicPath)] || null;
+    const pathHint = publicPath !== BASE && pathCounts.get(publicPath) === 1 ? APP_HINTS[publicPath] : null;
+    const hint = selfProxy ? APP_HINTS[BASE] : (exactHint || pathHint || {});
+    if (hint.hidden) continue;
 
     const { manifest: appManifest, url: manifestUrl } = await fetchAppManifest(proxyUrl, publicPath);
     const canonicalPath = manifestCanonicalPath(appManifest);
@@ -997,7 +1082,9 @@ async function discoverServedApps(releaseCatalog) {
       if (sameProxyTarget(proxyUrl, canonicalProxy)) continue;
     }
 
-    const id = routeId(hint.id || canonicalPath || publicPath);
+    const ambiguousPath = pathCounts.get(publicPath) > 1;
+    const idSource = hint.id || canonicalPath || (ambiguousPath ? `${host}${publicPath}` : publicPath);
+    const id = routeId(idSource);
     const key = routeKey(publicPath);
     const canonicalKey = canonicalPath ? routeKey(canonicalPath) : null;
     const releaseInfo = releaseCatalog?.appsById?.[id] || releaseCatalog?.appsById?.[key] || releaseCatalog?.appsById?.[canonicalKey] || null;
@@ -1013,10 +1100,11 @@ async function discoverServedApps(releaseCatalog) {
       repoPath = await findRepoByRemote(releaseInfo.repo) || repoPath;
     }
     const trailingSlash = hint.trailingSlash ?? manifestPrefersTrailingSlash(appManifest);
+    const launchBase = `https://${host}`;
 
     apps.push({
       id,
-      actionKey: routeActionKey(publicPath),
+      actionKey: routeActionKey(host, publicPath),
       group: hint.group || appGroupForPath(publicPath),
       name: hint.name || appManifest?.name || appManifest?.short_name || releaseInfo?.name || titleFromPath(publicPath),
       path: publicPath,
@@ -1052,15 +1140,16 @@ async function discoverServedApps(releaseCatalog) {
     serve: {
       ok: true,
       socket: serve.socket || null,
-      host,
-      baseUrl: TAILNET_ORIGIN,
-      paths: Object.keys(handlers).map(normalizeRoutePath),
-      listedPaths: apps.map(app => app.path),
-      rootIncluded: INCLUDE_ROOT_APP,
       error: null,
+      host: preferredHost || hosts[0] || null,
+      baseUrl: TAILNET_ORIGIN,
+      paths: routeEntries.map(entry => routeIdentity(entry.host, entry.servedPath)),
+      listedPaths: apps.map(app => app.publicUrl),
+      rootIncluded: INCLUDE_ROOT_APP,
     },
   };
 }
+
 
 function releaseInfoForApp(app, releaseCatalog) {
   const key = routeKey(app.path);
@@ -1070,8 +1159,8 @@ function releaseInfoForApp(app, releaseCatalog) {
 async function appStatus(app, { forceGit = false, releaseCatalog = null } = {}) {
   const releaseInfo = releaseInfoForApp(app, releaseCatalog);
   const [active, enabled, health, gitState] = await Promise.all([
-    app.service ? systemctl(['is-active', app.service]) : Promise.resolve({ ok: false, out: '' }),
-    app.service ? systemctl(['is-enabled', app.service]) : Promise.resolve({ ok: false, out: '' }),
+    app.service ? systemctlRead(['is-active', app.service]) : Promise.resolve({ ok: false, out: '' }),
+    app.service ? systemctlRead(['is-enabled', app.service]) : Promise.resolve({ ok: false, out: '' }),
     checkHealth(app.healthUrl),
     computeGitState(app, { force: forceGit }),
   ]);

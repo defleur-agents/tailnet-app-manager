@@ -30,6 +30,12 @@
         "run",
         "build"
       ]
+    },
+    "https://device.tailnet.example:6080/": {
+      "id": "browser",
+      "name": "Browser",
+      "proxyService": "remote-browser.service",
+      "icon": "/apps/assets/app-browser.png"
     }
   }
 }
