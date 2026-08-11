@@ -1037,6 +1037,17 @@ async function discoverServedApps(releaseCatalog) {
     if (right.toLowerCase() === preferredHost) return 1;
     return left.localeCompare(right);
   });
+  const preferredSelfAvailable = hosts.some(host => {
+    if (host.toLowerCase() !== preferredHost) return false;
+    const handlers = web[host]?.Handlers && typeof web[host].Handlers === 'object'
+      ? web[host].Handlers
+      : {};
+    return Object.entries(handlers).some(([rawPath, handler]) => {
+      const servedPath = normalizeRoutePath(rawPath);
+      const proxyUrl = extractProxyUrl(handler);
+      return proxyUrl && proxyTargetsSelf(proxyUrl) && (servedPath === '/' || servedPath === BASE);
+    });
+  });
 
   const routeEntries = [];
   for (const host of hosts) {
@@ -1050,6 +1061,7 @@ async function discoverServedApps(releaseCatalog) {
 
       const selfProxy = proxyTargetsSelf(proxyUrl)
         && (servedPath === BASE || (servedPath === '/' && host.toLowerCase() === preferredHost));
+      if (selfProxy && preferredSelfAvailable && host.toLowerCase() !== preferredHost) continue;
       const publicPath = selfProxy ? BASE : servedPath;
       const exactHint = APP_HINTS[routeIdentity(host, publicPath)] || null;
       if (servedPath === '/' && !selfProxy && !INCLUDE_ROOT_APP && !exactHint) continue;

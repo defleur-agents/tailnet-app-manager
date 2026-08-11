@@ -52,7 +52,7 @@ JSON
 cat > "$TMP/bin/tailscale" <<'SH'
 #!/usr/bin/env bash
 cat <<JSON
-{"Web":{"qa.tailnet.example:8443":{"Handlers":{"/":{"Proxy":"http://127.0.0.1:${APP_PORT}"}}},"qa.tailnet.example":{"Handlers":{"/apps":{"Proxy":"http://127.0.0.1:9"},"/demo":{"Proxy":"http://127.0.0.1:${FIXTURE_PORT}"},"/unknown":{"Proxy":"http://127.0.0.1:9"},"/current":{"Proxy":"http://127.0.0.1:9"},"/race":{"Proxy":"http://127.0.0.1:9"},"/credential":{"Proxy":"http://127.0.0.1:9"},"/short":{"Proxy":"http://127.0.0.1"},"/inferred":{"Proxy":"http://127.0.0.1:8080"},"/ambiguous":{"Proxy":"http://127.0.0.1:8081"},"/foo/bar":{"Proxy":"http://127.0.0.1:9"},"/foo-bar":{"Proxy":"http://127.0.0.1:9"},"/downloads/example.apk":{"Proxy":"http://127.0.0.1:${FIXTURE_PORT}"}}},"qa.tailnet.example:9443":{"Handlers":{"/":{"Proxy":"http://127.0.0.1:${FIXTURE_PORT}"}}},"qa.tailnet.example:9444":{"Handlers":{"/":{"Proxy":"http://127.0.0.1:9"}}}}}
+{"Web":{"qa.tailnet.example:8443":{"Handlers":{"/":{"Proxy":"http://127.0.0.1:${APP_PORT}"}}},"qa.tailnet.example:7443":{"Handlers":{"/apps":{"Proxy":"http://127.0.0.1:${APP_PORT}"}}},"qa.tailnet.example":{"Handlers":{"/apps":{"Proxy":"http://127.0.0.1:9"},"/demo":{"Proxy":"http://127.0.0.1:${FIXTURE_PORT}"},"/unknown":{"Proxy":"http://127.0.0.1:9"},"/current":{"Proxy":"http://127.0.0.1:9"},"/race":{"Proxy":"http://127.0.0.1:9"},"/credential":{"Proxy":"http://127.0.0.1:9"},"/short":{"Proxy":"http://127.0.0.1"},"/inferred":{"Proxy":"http://127.0.0.1:8080"},"/ambiguous":{"Proxy":"http://127.0.0.1:8081"},"/foo/bar":{"Proxy":"http://127.0.0.1:9"},"/foo-bar":{"Proxy":"http://127.0.0.1:9"},"/downloads/example.apk":{"Proxy":"http://127.0.0.1:${FIXTURE_PORT}"}}},"qa.tailnet.example:9443":{"Handlers":{"/":{"Proxy":"http://127.0.0.1:${FIXTURE_PORT}"}}},"qa.tailnet.example:9444":{"Handlers":{"/":{"Proxy":"http://127.0.0.1:9"}}}}}
 JSON
 SH
 chmod +x "$TMP/bin/tailscale"
@@ -229,6 +229,7 @@ with urllib.request.urlopen(base+'/apps/api/status',timeout=20) as r:
     status=json.load(r)
 assert status['ok'] is True
 assert len(status['apps'])==14, status['apps']
+assert not any(a['publicUrl'].startswith('https://qa.tailnet.example:7443/') for a in status['apps'])
 demo=next(a for a in status['apps'] if a['path']=='/demo')
 unknown=next(a for a in status['apps'] if a['path']=='/unknown')
 current=next(a for a in status['apps'] if a['path']=='/current')
