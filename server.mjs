@@ -217,6 +217,20 @@ function unsafeOriginAllowed(req) {
   return true;
 }
 
+function controlShellRedirect(req, pathname, search = '') {
+  if (!TAILNET_ORIGIN || (req.method || 'GET').toUpperCase() !== 'GET') return null;
+  if (pathname !== '/' && pathname !== BASE && pathname !== `${BASE}/`) return null;
+  try {
+    const control = new URL(TAILNET_ORIGIN);
+    const requested = new URL(`https://${req.headers.host || ''}`);
+    if (requested.hostname !== control.hostname || requested.origin === control.origin) return null;
+    const targetPath = pathname === '/' ? `${BASE}/` : pathname;
+    return `${control.origin}${targetPath}${search}`;
+  } catch {
+    return null;
+  }
+}
+
 function resolveStaticPath(pathname) {
   if (STATIC_ROUTES[pathname]) return STATIC_ROUTES[pathname];
   if (!pathname.startsWith(`${BASE}/assets/`)) return null;
@@ -960,7 +974,7 @@ async function discoverServedApps(releaseCatalog) {
   const preferredHost = hostFromTailnetBase();
   const host = preferredHost && web[preferredHost] ? preferredHost : Object.keys(web)[0];
   const handlers = host ? (web[host]?.Handlers || {}) : {};
-  const tailnetBase = TAILNET_ORIGIN || (host ? `https://${host}` : '');
+  const launchBase = host ? `https://${host}` : TAILNET_ORIGIN;
 
   const apps = [];
   for (const [rawPath, handler] of Object.entries(handlers)) {
@@ -1027,7 +1041,7 @@ async function discoverServedApps(releaseCatalog) {
       releaseInfo,
       postUpdate: hint.postUpdate || null,
       installed: true,
-      publicUrl: `${tailnetBase}${publicPath === '/' ? '/' : publicPath}${trailingSlash && publicPath !== '/' ? '/' : ''}`,
+      publicUrl: `${launchBase}${publicPath === '/' ? '/' : publicPath}${trailingSlash && publicPath !== '/' ? '/' : ''}`,
     });
   }
 
@@ -1039,7 +1053,7 @@ async function discoverServedApps(releaseCatalog) {
       ok: true,
       socket: serve.socket || null,
       host,
-      baseUrl: tailnetBase,
+      baseUrl: TAILNET_ORIGIN,
       paths: Object.keys(handlers).map(normalizeRoutePath),
       listedPaths: apps.map(app => app.path),
       rootIncluded: INCLUDE_ROOT_APP,
@@ -1375,6 +1389,11 @@ const server = http.createServer(async (req, res) => {
     const host = req.headers.host || `${HOST}:${PORT}`;
     const url = new URL(req.url || '/', `http://${host}`);
     const pathname = decodeURIComponent(url.pathname);
+
+    const controlRedirect = controlShellRedirect(req, pathname, url.search);
+    if (controlRedirect) {
+      return send(res, 302, '', { Location: controlRedirect, 'Content-Type': 'text/plain; charset=utf-8' });
+    }
 
     const staticFile = resolveStaticPath(pathname);
     if (staticFile) {

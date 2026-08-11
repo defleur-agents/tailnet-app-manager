@@ -217,7 +217,7 @@ node "$ROOT/server.mjs" >"$TMP/app.log" 2>&1 &
 APP_PID=$!
 
 python3 - "$APP_PORT" "$TMP/repos/demo" "$TMP/repos/unknown" "$TMP/repos/race" <<'PY'
-import json,pathlib,sys,time,urllib.error,urllib.request
+import http.client,json,pathlib,sys,time,urllib.error,urllib.request
 port=int(sys.argv[1]); repo=pathlib.Path(sys.argv[2]); unknown_repo=pathlib.Path(sys.argv[3]); race_repo=pathlib.Path(sys.argv[4]); base=f'http://127.0.0.1:{port}'
 for _ in range(80):
     try:
@@ -244,7 +244,8 @@ assert nested['id']==flat['id']=='foo-bar'
 assert nested['actionKey'] != flat['actionKey']
 assert demo['name']=='Manifest Demo App'
 assert demo['release']['source']=='catalog' and demo['release']['sourceHost']=='smoke-catalog'
-assert demo['publicUrl']=='https://qa.tailnet.example:8443/demo/'
+assert demo['publicUrl']=='https://qa.tailnet.example/demo/'
+assert status['serve']['baseUrl']=='https://qa.tailnet.example:8443'
 assert demo['icon'] is None
 assert demo['git']['dirty'] is True
 assert demo['git']['behind']==1
@@ -271,11 +272,24 @@ with urllib.request.urlopen(base+'/apps/',timeout=2) as r:
     html=r.read().decode()
     assert r.headers['X-Frame-Options']=='DENY'
     assert r.headers['X-Content-Type-Options']=='nosniff'
+    assert 'function redirectToControlOrigin(data)' in html
+    assert 'if (redirectToControlOrigin(data)) return;' in html
     assert r.headers['Cross-Origin-Opener-Policy']=='same-origin'
     assert r.headers['Cross-Origin-Resource-Policy']=='same-origin'
     assert "frame-ancestors 'none'" in r.headers['Content-Security-Policy']
     assert "img-src 'self' data:" in r.headers['Content-Security-Policy']
 assert 'Apps Manager' in html and 'actionFeedback' in html
+conn=http.client.HTTPConnection('127.0.0.1',port,timeout=2)
+conn.request('GET','/apps/?legacy=1',headers={'Host':'qa.tailnet.example'})
+legacy=conn.getresponse()
+assert legacy.status==302, legacy.status
+assert legacy.getheader('Location')=='https://qa.tailnet.example:8443/apps/?legacy=1'
+legacy.read(); conn.close()
+conn=http.client.HTTPConnection('127.0.0.1',port,timeout=2)
+conn.request('GET','/apps/',headers={'Host':'qa.tailnet.example:8443'})
+control=conn.getresponse()
+assert control.status==200, control.status
+control.read(); conn.close()
 with urllib.request.urlopen(base+'/apps/assets/app-terminal.png',timeout=2) as r:
     assert r.status==200 and r.headers['Content-Type']=='image/png'
 req=urllib.request.Request(base+'/apps/api/action',data=b'{}',headers={'Content-Type':'application/json','Origin':'https://hostile.example'},method='POST')

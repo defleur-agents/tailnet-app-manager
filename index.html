@@ -1114,12 +1114,26 @@
       runAction(appId, action);
     }
 
+    function redirectToControlOrigin(data) {
+      try {
+        const control = new URL(String(data?.serve?.baseUrl || ''));
+        const current = new URL(window.location.href);
+        if (current.protocol !== 'https:' || current.hostname !== control.hostname || current.origin === control.origin) return false;
+        const targetPath = current.pathname.startsWith('/apps') ? current.pathname : '/apps/';
+        window.location.replace(`${control.origin}${targetPath}${current.search}${current.hash}`);
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
     async function load(force = false) {
       refreshBtn.classList.add('syncing');
       refreshBtn.setAttribute('aria-busy', 'true');
       if (!state.apps.length) updatedAt.textContent = 'syncing';
       try {
         const data = await api(`/apps/api/status${force ? '?refresh=1' : ''}`);
+        if (redirectToControlOrigin(data)) return;
         applyStatusData(data);
         saveStatusCache(data);
         if (log.textContent.startsWith('Refresh failed:')) log.textContent = '';
