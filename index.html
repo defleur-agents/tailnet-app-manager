@@ -599,6 +599,8 @@
     }
 
     function appIconRoot(app) {
+      const launchUrl = launchUrlFor(app);
+      if (launchUrl) return launchUrl;
       const rawPath = String(app.path || '/').trim() || '/';
       const normalized = `/${rawPath.replace(/^\/+/, '').replace(/\/+$/, '')}`;
       return new URL(`${normalized === '/' ? '' : normalized}/`, window.location.origin).href;
@@ -610,14 +612,14 @@
         const raw = String(value || '').trim();
         if (raw && !candidates.includes(raw)) candidates.push(raw);
       };
-      add(app.icon);
+      const root = appIconRoot(app);
+      try { add(new URL(String(app.icon || ''), root).href); } catch {}
       const routeId = String(app.path || 'root')
         .replace(/^\/+|\/+$/g, '')
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-+|-+$/g, '') || 'root';
       add(new URL(`/apps/assets/app-${routeId}.png`, window.location.origin).href);
-      const root = appIconRoot(app);
       const standard = ['apple-touch-icon.png', 'icon-512.png', 'icon-192.png', 'icon.svg'];
       const favicons = ['static/apple-touch-icon.png', 'static/favicon-512.png', 'static/favicon-192.png', 'static/favicon.svg', 'favicon-512.png', 'favicon-192.png', 'favicon.svg', 'favicon.ico'];
       const names = [...standard, ...favicons];
@@ -714,17 +716,12 @@
       }
     }
 
-    function isNativeLauncher() {
-      return /\bTailnetAppsNative\//i.test(navigator.userAgent || '');
-    }
-
     function launchHrefFor(appOrUrl) {
       return launchUrlFor(appOrUrl);
     }
 
     function launchTargetAttr() {
-      if (isNativeLauncher()) return '';
-      return ' target="_blank" rel="noopener noreferrer"';
+      return '';
     }
 
     function stopLaunchPropagation(event) {

@@ -43,8 +43,8 @@ git -C "$TMP/source" commit --quiet -am 'v2'
 git -C "$TMP/source" push --quiet
 printf '%s\n' 'keep me' > "$TMP/repos/demo/local-change.txt"
 
-cat > "$TMP/www/manifest.webmanifest" <<'JSON'
-{"name":"Manifest Demo App","short_name":"Demo","id":"/demo/","start_url":"/demo/","scope":"/demo/","icons":[{"src":"javascript:alert(1)","sizes":"512x512"},{"src":"//evil.example/icon.png","sizes":"1024x1024"}]}
+cat > "$TMP/www/manifest.json" <<'JSON'
+{"name":"Manifest Demo App","short_name":"Demo","id":"/demo/","start_url":"/demo/","scope":"/demo/","icons":[{"src":"javascript:alert(1)","sizes":"2048x2048"},{"src":"//evil.example/icon.png","sizes":"1024x1024"},{"src":"icon.svg","sizes":"any","type":"image/svg+xml"}]}
 JSON
 cat > "$TMP/www/apps.json" <<JSON
 {"source":"smoke-catalog","apps":[{"id":"demo","path":"demo","name":"Demo App","version":"1.0.0","repo":"$TMP/upstream.git"},{"id":"current","path":"current","name":"Catalog Newer Only","version":"99.0.0","releaseDate":"2099-01-01","repo":"$TMP/upstream.git"}]}
@@ -246,7 +246,7 @@ assert demo['name']=='Manifest Demo App'
 assert demo['release']['source']=='catalog' and demo['release']['sourceHost']=='smoke-catalog'
 assert demo['publicUrl']=='https://qa.tailnet.example/demo/'
 assert status['serve']['baseUrl']=='https://qa.tailnet.example:8443'
-assert demo['icon'] is None
+assert demo['icon']=='/demo/icon.svg'
 assert demo['git']['dirty'] is True
 assert demo['git']['behind']==1
 assert demo['canUpdate'] is False
@@ -274,6 +274,8 @@ with urllib.request.urlopen(base+'/apps/',timeout=2) as r:
     assert r.headers['X-Content-Type-Options']=='nosniff'
     assert 'function redirectToControlOrigin(data)' in html
     assert 'if (redirectToControlOrigin(data)) return;' in html
+    assert "function launchTargetAttr() {\n      return '';" in html
+    assert 'target="_blank"' not in html
     assert r.headers['Cross-Origin-Opener-Policy']=='same-origin'
     assert r.headers['Cross-Origin-Resource-Policy']=='same-origin'
     assert "frame-ancestors 'none'" in r.headers['Content-Security-Policy']

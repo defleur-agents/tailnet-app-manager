@@ -428,10 +428,11 @@ function manifestIconPath(manifest, publicPath) {
       const sizes = String(icon.sizes || '');
       const maxSize = Math.max(0, ...sizes.split(/\s+/).map(s => Number((s.match(/\d+/) || [0])[0])));
       const svgBonus = String(icon.type || '').includes('svg') || String(icon.src || '').endsWith('.svg') ? 10000 : 0;
-      return { src: icon.src, score: svgBonus + maxSize };
+      return { src: absolutePublicPath(icon.src, publicPath), score: svgBonus + maxSize };
     })
+    .filter(icon => icon.src)
     .sort((a, b) => b.score - a.score);
-  return absolutePublicPath(scored[0]?.src, publicPath);
+  return scored[0]?.src || null;
 }
 
 function sameProxyTarget(a, b) {
@@ -446,10 +447,14 @@ async function fetchAppManifest(proxyUrl, publicPath) {
     if (raw && !candidates.includes(raw)) candidates.push(raw);
   };
 
-  try { add(new URL('manifest.webmanifest', ensureTrailingSlash(proxyUrl)).href); } catch {}
+  for (const name of ['manifest.webmanifest', 'manifest.json']) {
+    try { add(new URL(name, ensureTrailingSlash(proxyUrl)).href); } catch {}
+  }
   try {
     const origin = new URL(proxyUrl).origin;
-    add(`${origin}${normalizeRoutePath(publicPath)}/manifest.webmanifest`);
+    for (const name of ['manifest.webmanifest', 'manifest.json']) {
+      add(`${origin}${normalizeRoutePath(publicPath)}/${name}`);
+    }
   } catch {}
 
   for (const url of candidates) {
