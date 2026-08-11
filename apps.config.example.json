@@ -1,0 +1,35 @@
+{
+  "hiddenPaths": [
+    "/legacy-alias"
+  ],
+  "hiddenPrefixes": [
+    "/downloads/"
+  ],
+  "developmentPaths": [
+    "/example-app"
+  ],
+  "groups": {
+    "development": {
+      "id": "development",
+      "label": "In Development",
+      "description": "Apps still being built."
+    }
+  },
+  "apps": {
+    "/example-app": {
+      "id": "example-app",
+      "name": "Example App",
+      "service": "example-app.service",
+      "repoPath": "~/apps/example-app",
+      "healthUrl": "http://127.0.0.1:9000/health",
+      "icon": "/example-app/icon-512.png",
+      "trailingSlash": true,
+      "group": "development",
+      "postUpdate": [
+        "npm",
+        "run",
+        "build"
+      ]
+    }
+  }
+}

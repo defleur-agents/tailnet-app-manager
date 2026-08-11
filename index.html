@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <meta name="theme-color" content="#0B0B0D" />
+  <meta name="theme-color" content="#090C12" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="Apps Manager" />
   <link rel="manifest" href="/apps/manifest.webmanifest" />
@@ -12,238 +12,518 @@
   <title>Apps Manager</title>
   <style>
     :root {
-      --bg:#0b0b0d;
-      --card:#17171d;
-      --line:#262632;
-      --text:#f4f5f7;
-      --muted:#9ba3b2;
-      --ok:#22c55e;
-      --warn:#f59e0b;
+      --bg:#090c12;
+      --surface:#151924;
+      --surface-2:#192030;
+      --surface-3:#111620;
+      --line:#252c3d;
+      --line-strong:#30384d;
+      --text:#f3f6fb;
+      --muted:#8f98ad;
+      --faint:#687287;
+      --ok:#00d47a;
+      --warn:#f5a21a;
       --bad:#ef4444;
-      --btn:#1a1f28;
-      --btn-line:#2d3440;
+      --teal:#005d66;
+      --teal-2:#123e49;
+      --shadow:0 30px 90px rgba(0,0,0,.62);
+      --radius-xl:28px;
+      --radius-lg:22px;
+      --radius-md:16px;
     }
-    * { box-sizing:border-box; }
-    html,body { margin:0; padding:0; background:var(--bg); color:var(--text); font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
-    body { min-height:100vh; }
 
-    .wrap { width:min(1120px,100%); margin:0 auto; padding:14px 12px calc(22px + env(safe-area-inset-bottom)); }
-    .top { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; }
-    .title { display:flex; align-items:center; gap:10px; min-width:0; }
-    .title img { width:30px; height:30px; border-radius:9px; border:1px solid #2d2d39; }
-    h1 { margin:0; font-size:1.02rem; letter-spacing:.01em; white-space:nowrap; }
-    .meta { margin:0 0 12px; color:var(--muted); font-size:.78rem; }
+    * { box-sizing:border-box; }
+    html,body { margin:0; padding:0; background:var(--bg); color:var(--text); font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+    body { min-height:100vh; }
+    body.detail-open { overflow:hidden; }
+
+    .wrap { width:min(1040px,100%); margin:0 auto; padding:34px 34px calc(34px + env(safe-area-inset-bottom)); }
+    .top { display:flex; align-items:center; justify-content:space-between; gap:18px; margin-bottom:28px; }
+    .brand { display:flex; align-items:center; gap:22px; min-width:0; }
+    .brand img { width:82px; height:82px; border-radius:20px; box-shadow:0 0 0 1px rgba(255,255,255,.08); }
+    h1 { margin:0; font-size:clamp(1.85rem,4vw,2.65rem); line-height:1.02; letter-spacing:-.045em; white-space:nowrap; }
+    .sync-block { display:flex; align-items:center; gap:18px; flex-shrink:0; }
+    .synced { color:#656d80; font-size:1.14rem; line-height:1.15; letter-spacing:.06em; text-transform:lowercase; text-align:right; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace; }
+    .synced.stale { color:#8790a4; }
+    #refreshBtn.syncing { opacity:.72; box-shadow:0 0 0 1px rgba(223,252,255,.18),0 0 22px rgba(0,93,102,.28); }
 
     .btn {
-      appearance:none; border:1px solid var(--btn-line); background:var(--btn); color:#e8ecf4;
-      border-radius:11px; min-height:44px; padding:11px 12px; font-size:.83rem; font-weight:650; cursor:pointer;
+      appearance:none; border:1px solid var(--line); background:#172030; color:#e8edf7;
+      border-radius:18px; min-height:56px; padding:13px 20px; font:inherit; font-size:1rem; font-weight:800; cursor:pointer;
+      transition:background .16s ease,border-color .16s ease,transform .16s ease,opacity .16s ease;
     }
-    .btn:hover { background:#212836; }
-    .btn:disabled { opacity:.45; cursor:not-allowed; }
-    .btn.primary { border-color:#2d5060; background:#17333d; color:#dff7ff; }
-    .btn.primary:hover { background:#1c4250; }
+    .btn:hover { background:#1d2637; border-color:#384158; }
+    .btn:active { transform:translateY(1px); }
+    .btn:disabled,
+    .square-action:disabled { opacity:.46; cursor:not-allowed; transform:none; }
+    .btn.primary { background:var(--teal); border-color:#086b76; color:#f1feff; }
+    .btn.primary:hover { background:#076a74; }
+    .btn.warn { background:var(--warn); border-color:#f9b239; color:#17110a; }
+    .btn.warn:hover { background:#ffad1c; }
+    .btn.icon {
+      width:82px; height:82px; min-height:82px; padding:0; border-radius:22px; display:grid; place-items:center;
+      background:var(--teal); border-color:#075d68; color:#dffcff; font-size:1.7rem;
+    }
+    .btn.subtle { background:transparent; color:#aab3c6; }
 
-    .group { margin-bottom:16px; }
-    .group:last-of-type { margin-bottom:0; }
-    .group-label {
-      margin:0 0 4px;
-      font-size:.72rem;
-      letter-spacing:.13em;
-      text-transform:uppercase;
-      color:#7f8fa9;
-      font-weight:700;
+    .update-banner {
+      display:flex; align-items:center; justify-content:space-between; gap:16px; margin:0 0 28px;
+      padding:22px 26px; border:1px solid rgba(245,162,26,.28); background:rgba(245,162,26,.055);
+      border-radius:28px; color:#e8edf7; font-size:1.22rem; line-height:1.25; box-shadow:0 0 0 1px rgba(0,0,0,.1) inset;
     }
-    .group-desc { margin:0 0 10px; color:var(--muted); font-size:.76rem; line-height:1.45; }
+    .update-banner[hidden] { display:none; }
+    .update-copy { display:flex; align-items:center; min-width:0; gap:18px; }
+    .update-dot { width:18px; height:18px; border-radius:50%; background:var(--warn); flex:0 0 auto; box-shadow:0 0 0 8px rgba(245,162,26,.08); }
+    .update-copy strong { color:#ffb545; font-weight:900; }
+    .update-copy span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .update-banner .btn { min-height:64px; min-width:194px; border-radius:22px; font-size:1.08rem; }
 
-    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(246px,1fr)); gap:10px; }
-    .card {
-      background:linear-gradient(180deg, #1a1b22, #15151b);
-      border:1px solid var(--line);
-      border-radius:14px;
-      padding:12px;
-      display:flex;
-      flex-direction:column;
-      gap:10px;
-      min-width:0;
+    .action-feedback {
+      display:flex; align-items:center; gap:14px; margin:0 0 28px; padding:16px 20px; border:1px solid var(--line);
+      border-radius:20px; background:#121923; color:#dce5f4; font-size:1rem; font-weight:800; line-height:1.3;
     }
+    .action-feedback[hidden] { display:none; }
+    .action-feedback::before { content:""; width:12px; height:12px; border-radius:50%; flex:0 0 auto; background:#8f98ad; }
+    .action-feedback.pending { border-color:rgba(245,162,26,.34); background:rgba(245,162,26,.07); }
+    .action-feedback.pending::before { background:var(--warn); box-shadow:0 0 0 6px rgba(245,162,26,.09); }
+    .action-feedback.success { border-color:rgba(0,212,122,.34); background:rgba(0,212,122,.07); color:#dff9ec; }
+    .action-feedback.success::before { background:var(--ok); box-shadow:0 0 0 6px rgba(0,212,122,.09); }
+    .action-feedback.error { border-color:rgba(239,68,68,.38); background:rgba(239,68,68,.08); color:#ffe1e1; }
+    .action-feedback.error::before { background:var(--bad); box-shadow:0 0 0 6px rgba(239,68,68,.09); }
 
-    .head { display:flex; align-items:flex-start; gap:10px; min-width:0; }
-    .head-main { min-width:0; flex:1; }
-    .icon {
-      width:34px; height:34px; border-radius:10px; object-fit:cover; flex:0 0 auto;
-      border:1px solid #30303b; background:#101218;
+    .toolbar { display:flex; align-items:center; justify-content:space-between; gap:18px; margin:0 0 28px; }
+    .view-toggle {
+      display:flex; gap:5px; padding:6px; border:1px solid var(--line); border-radius:22px; background:#121722;
+      box-shadow:0 0 0 1px rgba(255,255,255,.02) inset;
     }
-    .name { font-size:.92rem; font-weight:700; line-height:1.15; }
-    .path {
-      margin-top:2px; font-size:.7rem; color:var(--muted);
-      font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
-      word-break:break-all;
+    .view-toggle button {
+      appearance:none; border:0; background:transparent; color:#8d96aa; border-radius:17px; min-width:88px; min-height:64px;
+      padding:0 16px; font:inherit; font-weight:900; cursor:pointer; display:grid; place-items:center;
     }
+    .view-toggle button.active { color:#f3f7ff; background:#1b2434; box-shadow:0 9px 24px rgba(0,0,0,.24); }
+    .toggle-icon { width:24px; height:24px; color:currentColor; display:grid; place-items:center; }
+    .toggle-icon.list-icon { align-content:center; gap:5px; }
+    .toggle-icon.list-icon i { display:block; width:22px; height:3px; border-radius:999px; background:currentColor; }
+    .toggle-icon.grid-icon { grid-template-columns:repeat(3,5px); grid-auto-rows:5px; gap:3px; align-content:center; justify-content:center; }
+    .toggle-icon.grid-icon i { display:block; width:5px; height:5px; border-radius:1.5px; background:currentColor; }
+    .summary { color:#697387; font-size:1.12rem; letter-spacing:.08em; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace; white-space:nowrap; }
 
-    .status-row { display:flex; align-items:center; gap:8px; }
-    .state-dot { width:9px; height:9px; border-radius:999px; flex:0 0 auto; }
-    .state-label { font-size:.77rem; font-weight:700; letter-spacing:.02em; }
-    .state-good { color:var(--ok); }
-    .state-good .state-dot { background:var(--ok); box-shadow:0 0 0 4px rgba(34,197,94,.12); }
-    .state-warn { color:var(--warn); }
-    .state-warn .state-dot { background:var(--warn); box-shadow:0 0 0 4px rgba(245,158,11,.12); }
-    .state-bad { color:var(--bad); }
-    .state-bad .state-dot { background:var(--bad); box-shadow:0 0 0 4px rgba(239,68,68,.12); }
+    .main-shell { display:grid; grid-template-columns:minmax(0,1fr) minmax(360px,410px); gap:18px; align-items:start; }
+    .apps-surface.list { display:grid; gap:14px; }
+    .apps-surface.tiles { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:28px; align-items:start; padding:22px 0 0; }
 
-    .meta-row {
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      min-height:20px;
-      font-size:.72rem;
-      color:var(--muted);
+    .development-section { grid-column:1/-1; margin-top:18px; padding-top:16px; border-top:1px solid var(--line); }
+    .development-section > summary {
+      list-style:none; display:flex; align-items:center; justify-content:space-between; gap:14px; min-height:48px;
+      color:#929caf; cursor:pointer; font-weight:850; letter-spacing:.01em; user-select:none;
     }
-    .version-stack {
-      display:grid;
-      gap:4px;
-      font-size:.69rem;
-      color:#a9b1c0;
-      line-height:1.35;
-      border-top:1px dashed #2a3140;
-      border-bottom:1px dashed #2a3140;
-      padding:8px 0;
-    }
-    .version-line { display:flex; gap:6px; flex-wrap:wrap; }
-    .version-label { color:#8190a8; min-width:58px; }
-    .version-source { color:#73829a; }
-    .update-ok { color:var(--ok); }
-    .update-warn { color:var(--warn); }
-    .update-bad { color:var(--bad); }
-    .legend { margin:-4px 0 10px; font-size:.71rem; color:#8d99ad; line-height:1.35; }
+    .development-section > summary::-webkit-details-marker { display:none; }
+    .development-summary-copy { display:flex; align-items:baseline; gap:10px; min-width:0; }
+    .development-count { color:#626d81; font-size:.9rem; font-weight:700; }
+    .development-chevron { color:#687387; font-size:1.1rem; transition:transform .16s ease; }
+    .development-section[open] .development-chevron { transform:rotate(180deg); }
+    .development-items.list { display:grid; gap:14px; padding-top:10px; }
+    .development-items.tiles { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:28px; align-items:start; padding:18px 0 0; }
 
-    .toggle {
-      position:relative;
-      width:46px;
-      height:26px;
-      border-radius:999px;
-      border:1px solid #384052;
-      background:#212838;
-      transition:.2s ease;
-      flex:0 0 auto;
+    .app-row,
+    .app-tile {
+      position:relative; color:inherit; cursor:pointer;
     }
-    .toggle.on {
-      background:rgba(34,197,94,.24);
-      border-color:rgba(34,197,94,.45);
-    }
-    .toggle .thumb {
-      position:absolute;
-      top:2px;
-      left:2px;
-      width:20px;
-      height:20px;
-      border-radius:50%;
-      background:#dfe4ef;
-      transition:.2s ease;
-    }
-    .toggle.on .thumb { transform:translateX(20px); }
-    .toggle:disabled { opacity:.45; }
+    .app-row { border:1px solid var(--line); background:var(--surface); box-shadow:0 1px 0 rgba(255,255,255,.025) inset; overflow:hidden; min-height:132px; border-radius:24px; padding:22px 22px 22px 34px; display:grid; grid-template-columns:82px minmax(0,1fr) auto; align-items:center; gap:22px; }
+    .app-row::before { content:""; position:absolute; left:0; top:22px; bottom:22px; width:6px; border-radius:0 999px 999px 0; background:var(--rail,var(--ok)); }
+    .app-row:hover { border-color:#3a4359; background:#181e2b; }
+    .app-row.active { border-color:#3d5269; background:#182230; }
+    .app-row.active::before { box-shadow:0 0 0 5px rgba(0,212,122,.08); }
 
-    .toggle.mini {
-      width:36px;
-      height:20px;
-      border-radius:999px;
-    }
-    .toggle.mini .thumb {
-      top:1px;
-      left:1px;
-      width:16px;
-      height:16px;
-    }
-    .toggle.mini.on .thumb { transform:translateX(16px); }
+    .app-tile { min-height:142px; display:grid; justify-items:center; align-content:start; gap:13px; text-align:center; background:transparent; border:0; padding:0; overflow:visible; }
+    .app-tile:hover { background:transparent; }
+    .app-tile.active .mono { border-color:#3d5269; box-shadow:0 0 0 2px rgba(61,82,105,.45); }
+    .app-tile.self-app { cursor:default; }
+    .app-tile.self-app .mono,
+    .app-tile.self-app .tile-name { opacity:.58; }
+    .app-row.self-app .app-main { opacity:.78; }
+    .tile-icon-wrap { position:relative; display:inline-flex; }
+    .tile-indicator { position:absolute; top:-6px; right:-6px; }
+    .tile-indicator .state-dot { width:16px; height:16px; box-shadow:0 0 0 4px var(--bg); }
+    .tile-name { width:100%; max-width:150px; color:#aeb7c8; font-size:1.1rem; line-height:1.15; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .tile-hint { grid-column:1/-1; margin-top:18px; text-align:center; color:#626b7e; font-size:1rem; }
 
-    .head-autostart {
-      margin-left:auto;
-      display:flex;
-      align-items:center;
-      gap:6px;
-      color:#8694aa;
-      font-size:.62rem;
-      letter-spacing:.04em;
-      text-transform:uppercase;
-      flex-shrink:0;
+    .mono {
+      width:66px; height:66px; border-radius:18px; display:grid; place-items:center; background:#182131; border:1px solid #283246;
+      color:#aab4c7; font-size:1.24rem; letter-spacing:-.05em; font-weight:900; flex:0 0 auto; overflow:hidden; position:relative;
     }
+    .app-icon { grid-area:1/1; display:block; width:100%; height:100%; object-fit:cover; border-radius:inherit; }
+    .icon-fallback { grid-area:1/1; display:grid; place-items:center; width:100%; height:100%; }
+    .mono.has-icon .icon-fallback { display:none; }
+    .mono.has-icon.fallback-visible .app-icon { display:none; }
+    .mono.has-icon.fallback-visible .icon-fallback { display:grid; }
+    .app-row > .mono { justify-self:center; }
+    .app-main { min-width:0; display:grid; gap:7px; }
+    .name-line { display:flex; align-items:center; gap:10px; min-width:0; }
+    .app-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:1.45rem; line-height:1.08; font-weight:900; letter-spacing:-.035em; }
+    .app-path { color:#70798d; font-size:1.08rem; line-height:1.1; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .app-actions { display:flex; align-items:center; gap:12px; }
+    .square-action {
+      appearance:none; border:1px solid var(--line); background:#182131; color:#94a0b5; width:70px; height:70px; border-radius:20px;
+      display:grid; place-items:center; font-size:1.6rem; font-weight:900; cursor:pointer;
+    }
+    .square-action:hover { background:#202a3d; border-color:#3a4359; color:#dce6f7; }
+    .square-action.warn { color:#ffb545; border-color:rgba(245,162,26,.42); background:rgba(245,162,26,.045); }
+    .square-action.disabled,
+    .btn.disabled { opacity:.44; cursor:not-allowed; filter:saturate(.65); }
+    .square-action.disabled:hover,
+    .btn.disabled:hover { background:#182131; border-color:var(--line); color:#94a0b5; transform:none; }
+    .btn.disabled { pointer-events:none; }
 
-    .actions { display:grid; grid-template-columns:1fr 1fr 1fr; gap:7px; }
-    .actions .btn { min-height:38px; padding:8px 8px; font-size:.76rem; border-radius:10px; }
-    .actions .open { text-decoration:none; text-align:center; display:inline-flex; align-items:center; justify-content:center; }
+    .badge { display:inline-flex; align-items:center; min-height:32px; padding:4px 12px; border-radius:11px; font-size:.88rem; line-height:1; font-weight:950; letter-spacing:.07em; white-space:nowrap; }
+    .badge.local { color:#aeb7c8; background:#222b3c; }
+    .badge.forked { color:#00db83; background:rgba(0,212,122,.12); }
+    .badge.update { color:#ffb545; background:rgba(245,162,26,.16); }
+    .badge.latest { color:#88e3b7; background:rgba(0,212,122,.09); }
+    .badge.issue { color:#ffb545; background:rgba(245,162,26,.16); }
+
+    .status-pill { display:inline-flex; align-items:center; gap:10px; color:#f0f5ff; font-size:1.32rem; font-weight:700; white-space:nowrap; }
+    .state-dot { width:18px; height:18px; border-radius:999px; display:inline-block; flex:0 0 auto; }
+    .state-good .state-dot { background:var(--ok); box-shadow:0 0 0 7px rgba(0,212,122,.08); }
+    .state-warn .state-dot { background:var(--warn); box-shadow:0 0 0 7px rgba(245,162,26,.08); }
+    .state-bad .state-dot { background:var(--bad); box-shadow:0 0 0 7px rgba(239,68,68,.08); }
+
+    .detail-backdrop { display:none; }
+    .detail-panel {
+      position:sticky; top:22px; border:1px solid var(--line); border-radius:var(--radius-xl); background:var(--surface);
+      box-shadow:0 1px 0 rgba(255,255,255,.03) inset; overflow:hidden;
+    }
+    .detail-panel[data-empty="true"] { min-height:360px; display:grid; place-items:center; color:#737d91; text-align:center; padding:30px; }
+    .detail-empty strong { display:block; margin-bottom:8px; color:#d9e1ef; font-size:1rem; }
+    .sheet-handle { display:none; width:104px; height:10px; border-radius:999px; background:#30394d; margin:26px auto 24px; }
+    .detail-content { padding:24px; display:grid; gap:24px; }
+    .detail-head { display:grid; grid-template-columns:76px minmax(0,1fr); align-items:center; gap:20px; }
+    .detail-head .mono { width:76px; height:76px; border-radius:18px; font-size:1.4rem; }
+    .detail-title { min-width:0; display:grid; gap:8px; }
+    .detail-title h2 { margin:0; font-size:1.8rem; line-height:1.08; letter-spacing:-.04em; overflow-wrap:anywhere; }
+    .detail-subtitle { color:#747d91; font-size:1rem; line-height:1.25; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace; overflow-wrap:anywhere; }
+    .detail-status { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+    .detail-status .status-pill { font-size:1rem; }
+    .detail-status .state-dot { width:13px; height:13px; }
+
+    .version-card { display:grid; border:1px solid var(--line-strong); border-radius:22px; background:#141a26; overflow:hidden; }
+    .version-row { display:grid; grid-template-columns:minmax(92px,.7fr) minmax(0,1.4fr); gap:16px; padding:18px 20px; border-top:1px solid var(--line); align-items:center; min-width:0; }
+    .version-row:first-child { border-top:0; }
+    .version-label { color:#70798d; font-size:1rem; }
+    .version-value { color:#eef3fb; font-size:1rem; text-align:right; min-width:0; overflow-wrap:anywhere; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace; }
+    .version-value.warn { color:#f5b04b; }
+
+    .detail-update { display:none; width:100%; min-height:76px; border-radius:22px; font-size:1.22rem; }
+    .detail-update.show { display:block; }
+    .detail-feedback { margin-top:-10px; padding:13px 16px; border:1px solid var(--line); border-radius:16px; font-size:.92rem; font-weight:800; line-height:1.3; }
+    .detail-feedback.pending { border-color:rgba(245,162,26,.34); background:rgba(245,162,26,.07); color:#ffe7bd; }
+    .detail-feedback.success { border-color:rgba(0,212,122,.34); background:rgba(0,212,122,.07); color:#dff9ec; }
+    .detail-feedback.error { border-color:rgba(239,68,68,.38); background:rgba(239,68,68,.08); color:#ffe1e1; }
+    .detail-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+    .detail-actions .btn { min-height:76px; border-radius:22px; text-align:center; display:flex; align-items:center; justify-content:center; text-decoration:none; font-size:1.18rem; }
+    .detail-note { margin:0; color:#687287; text-align:center; line-height:1.45; font-size:.95rem; }
 
     #log {
-      margin-top:10px; background:#11141a; border:1px solid #222836; color:#cfd6e4;
-      border-radius:10px; padding:9px 10px; font-size:.76rem; white-space:pre-wrap; min-height:40px;
+      margin-top:24px; background:#111722; border:1px solid var(--line); color:#cbd5e1;
+      border-radius:18px; padding:14px 16px; font-size:.86rem; white-space:pre-wrap; min-height:48px;
+    }
+    #log:empty { display:none; }
+
+    @media (max-width:860px) {
+      .wrap { padding:30px 30px calc(30px + env(safe-area-inset-bottom)); }
+      .main-shell { display:block; }
+      .detail-backdrop {
+        display:block; position:fixed; inset:0; background:rgba(0,0,0,.62); backdrop-filter:blur(7px); opacity:0; pointer-events:none;
+        transition:opacity .18s ease; z-index:20;
+      }
+      .detail-backdrop.open { opacity:1; pointer-events:auto; }
+      .detail-panel {
+        position:fixed; left:0; right:0; bottom:0; top:auto; z-index:21; max-height:min(86vh,860px);
+        border-radius:34px 34px 0 0; border-color:#30384d; box-shadow:var(--shadow);
+        transform:translateY(105%); visibility:hidden; transition:transform .22s ease, visibility .22s ease;
+      }
+      .detail-panel.open { transform:translateY(0); visibility:visible; }
+      .detail-panel[data-empty="true"] { display:none; }
+      .detail-content { max-height:min(86vh,860px); overflow:auto; padding:0 38px calc(30px + env(safe-area-inset-bottom)); gap:22px; }
+      .sheet-handle { display:block; flex:0 0 auto; }
+      .detail-head { grid-template-columns:108px minmax(0,1fr); gap:26px; }
+      .detail-head .mono { width:108px; height:108px; border-radius:28px; font-size:2rem; }
+      .detail-title h2 { font-size:2.25rem; }
+      .detail-subtitle { font-size:1.18rem; white-space:normal; }
+      .detail-status .status-pill { font-size:1.3rem; }
+      .detail-status .state-dot { width:16px; height:16px; }
+      .version-row { grid-template-columns:minmax(120px,.7fr) minmax(0,1.4fr); padding:20px 26px; }
+      .version-label,.version-value { font-size:1.18rem; }
+      .detail-update { min-height:78px; border-radius:24px; font-size:1.35rem; }
+      .detail-actions { gap:18px 16px; }
+      .detail-actions .btn { min-height:78px; border-radius:24px; font-size:1.28rem; }
+      .detail-note { font-size:1rem; }
     }
 
-    @media (max-width:560px) {
-      .wrap { padding:12px 10px calc(16px + env(safe-area-inset-bottom)); }
-      h1 { font-size:1rem; }
-      .grid { grid-template-columns:1fr; }
+    @media (max-width:640px) {
+      .wrap { padding:28px 18px calc(28px + env(safe-area-inset-bottom)); }
+      .top { margin-bottom:24px; gap:12px; }
+      .brand { gap:16px; }
+      .brand img { width:64px; height:64px; border-radius:15px; }
+      h1 { font-size:2rem; }
+      .sync-block { gap:12px; }
+      .synced { font-size:.9rem; }
+      .btn.icon { width:64px; height:64px; min-height:64px; border-radius:16px; font-size:1.35rem; }
+      .update-banner { margin-bottom:26px; padding:17px 18px; border-radius:23px; font-size:1.15rem; gap:12px; }
+      .update-dot { width:12px; height:12px; }
+      .update-banner .btn { min-height:54px; min-width:0; padding:12px 18px; border-radius:17px; font-size:1rem; }
+      .action-feedback { margin-bottom:22px; padding:14px 17px; border-radius:17px; font-size:.96rem; }
+      .toolbar { margin-bottom:22px; gap:14px; }
+      .view-toggle { border-radius:20px; padding:5px; }
+      .view-toggle button { min-width:58px; min-height:52px; border-radius:15px; font-size:1.45rem; padding:0 12px; }
+      .summary { font-size:.94rem; text-align:right; letter-spacing:.04em; }
+      .apps-surface.list { gap:14px; }
+      .apps-surface.tiles { grid-template-columns:repeat(4,minmax(0,1fr)); gap:18px; padding-top:18px; }
+      .development-items.tiles { gap:18px; }
+      .app-row { min-height:108px; border-radius:22px; padding:20px 16px 20px 28px; grid-template-columns:64px minmax(0,1fr) auto; gap:16px; }
+      .app-row::before { top:20px; bottom:20px; width:5px; }
+      .app-tile { min-height:112px; padding:0; }
+      .mono { width:64px; height:64px; border-radius:18px; font-size:1.42rem; }
+      .app-name { font-size:1.36rem; }
+      .app-path { font-size:1rem; }
+      .badge { min-height:28px; padding:4px 10px; border-radius:9px; font-size:.82rem; }
+      .app-actions { gap:10px; }
+      .square-action { width:58px; height:58px; border-radius:16px; font-size:1.3rem; }
+      .status-pill { font-size:.96rem; }
+      .state-dot { width:12px; height:12px; }
+      .detail-panel { border-radius:28px 28px 0 0; }
+      .detail-content { padding:0 24px calc(28px + env(safe-area-inset-bottom)); gap:22px; }
+      .sheet-handle { width:74px; height:7px; margin:20px auto 20px; }
+      .detail-head { grid-template-columns:92px minmax(0,1fr); gap:22px; }
+      .detail-head .mono { width:92px; height:92px; border-radius:24px; font-size:1.8rem; }
+      .detail-title h2 { font-size:2rem; }
+      .detail-subtitle { font-size:1.18rem; }
+      .detail-status .status-pill { font-size:1.22rem; }
+      .detail-status .state-dot { width:14px; height:14px; }
+      .version-row { grid-template-columns:minmax(96px,.7fr) minmax(0,1.4fr); padding:18px 20px; }
+      .version-label,.version-value { font-size:1.1rem; }
+      .detail-update { min-height:74px; border-radius:22px; font-size:1.25rem; }
+      .detail-actions { gap:16px 14px; }
+      .detail-actions .btn { min-height:74px; border-radius:22px; font-size:1.18rem; }
+      .detail-note { font-size:.96rem; }
+    }
+
+    @media (max-width:420px) {
+      .wrap { padding-left:14px; padding-right:14px; }
+      .summary { font-size:.82rem; }
+      .apps-surface.tiles { grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; padding-top:14px; }
+      .app-row { grid-template-columns:58px minmax(0,1fr) auto; gap:14px; }
+      .mono { width:58px; height:58px; border-radius:16px; font-size:1.28rem; }
+      .app-name { font-size:1.18rem; }
+      .app-path { font-size:.92rem; }
+      .square-action { width:52px; height:52px; border-radius:15px; }
+      .name-line { gap:8px; }
+    }
+
+    /* Phone proportions tuned against the Android Chrome screenshots. */
+    @media (max-width:640px) {
+      html { -webkit-text-size-adjust:100%; text-size-adjust:100%; }
+      .wrap { padding:18px 12px calc(18px + env(safe-area-inset-bottom)); }
+      .top { gap:10px; margin-bottom:18px; }
+      .brand { gap:11px; flex:1 1 auto; min-width:0; }
+      .brand img { width:44px; height:44px; border-radius:12px; }
+      h1 { font-size:1.42rem; letter-spacing:-.035em; }
+      .sync-block { gap:9px; }
+      .synced { font-size:.72rem; line-height:1.12; letter-spacing:.04em; }
+      .btn.icon { width:44px; height:44px; min-height:44px; border-radius:12px; font-size:1rem; }
+
+      .update-banner { margin-bottom:18px; padding:12px 13px; border-radius:17px; font-size:.92rem; gap:10px; }
+      .update-copy { gap:9px; }
+      .update-dot { width:8px; height:8px; box-shadow:0 0 0 5px rgba(245,162,26,.08); }
+      .update-banner .btn { min-height:38px; min-width:112px; padding:8px 12px; border-radius:12px; font-size:.84rem; }
+      .action-feedback { margin-bottom:16px; padding:11px 13px; border-radius:14px; font-size:.82rem; }
+
+      .toolbar { margin-bottom:16px; gap:10px; }
+      .view-toggle { padding:3px; gap:3px; border-radius:14px; }
+      .view-toggle button { min-width:42px; min-height:34px; border-radius:11px; padding:0 8px; font-size:1.05rem; }
+      .toggle-icon { width:19px; height:19px; }
+      .toggle-icon.list-icon { gap:4px; }
+      .toggle-icon.list-icon i { width:18px; height:2.4px; }
+      .toggle-icon.grid-icon { grid-template-columns:repeat(3,4px); grid-auto-rows:4px; gap:2.5px; }
+      .toggle-icon.grid-icon i { width:4px; height:4px; border-radius:1.2px; }
+      .summary { min-width:0; overflow:hidden; text-overflow:ellipsis; font-size:.74rem; letter-spacing:.03em; }
+
+      .apps-surface.list { gap:9px; }
+      .apps-surface.tiles { grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; padding-top:12px; }
+      .development-section { margin-top:10px; padding-top:8px; }
+      .development-section > summary { min-height:38px; font-size:.88rem; }
+      .development-count { font-size:.72rem; }
+      .development-items.list { gap:9px; padding-top:7px; }
+      .development-items.tiles { gap:12px; padding-top:12px; }
+      .app-row { min-height:68px; border-radius:16px; padding:10px 10px 10px 18px; grid-template-columns:42px minmax(0,1fr) auto; gap:12px; }
+      .app-row::before { top:12px; bottom:12px; width:4px; }
+      .app-main { gap:4px; }
+      .name-line { gap:7px; }
+      .mono { width:40px; height:40px; border-radius:12px; font-size:.9rem; }
+      .app-name { font-size:1rem; line-height:1.08; letter-spacing:-.025em; }
+      .app-path { font-size:.76rem; line-height:1.05; }
+      .badge { min-height:20px; padding:3px 7px; border-radius:6px; font-size:.64rem; letter-spacing:.055em; }
+      .app-actions { gap:7px; }
+      .square-action { width:38px; height:38px; border-radius:11px; font-size:.95rem; }
+      .status-pill { font-size:.76rem; gap:6px; }
+      .state-dot { width:8px; height:8px; }
+      .state-good .state-dot,.state-warn .state-dot,.state-bad .state-dot { box-shadow:0 0 0 4px rgba(0,212,122,.08); }
+
+      .app-tile { min-height:84px; gap:8px; }
+      .tile-indicator { top:-4px; right:-4px; }
+      .tile-indicator .state-dot { width:10px; height:10px; box-shadow:0 0 0 3px var(--bg); }
+      .tile-name { max-width:72px; font-size:.76rem; }
+      .tile-hint { margin-top:8px; font-size:.72rem; }
+
+      .detail-panel { border-radius:20px 20px 0 0; }
+      .detail-content { padding:0 18px calc(18px + env(safe-area-inset-bottom)); gap:16px; }
+      .sheet-handle { width:54px; height:5px; margin:14px auto 14px; }
+      .detail-head { grid-template-columns:56px minmax(0,1fr); gap:14px; }
+      .detail-head .mono { width:56px; height:56px; border-radius:15px; font-size:1.15rem; }
+      .detail-title h2 { font-size:1.32rem; }
+      .detail-subtitle { font-size:.78rem; }
+      .detail-status .status-pill { font-size:.84rem; }
+      .detail-status .state-dot { width:9px; height:9px; }
+      .version-card { border-radius:15px; }
+      .version-row { grid-template-columns:minmax(72px,.7fr) minmax(0,1.4fr); padding:11px 13px; gap:10px; }
+      .version-label,.version-value { font-size:.76rem; }
+      .detail-update { min-height:46px; border-radius:14px; font-size:.9rem; }
+      .detail-actions { gap:10px 9px; }
+      .detail-actions .btn { min-height:46px; border-radius:14px; font-size:.86rem; }
+      .detail-note { font-size:.74rem; }
+    }
+
+    @media (max-width:420px) {
+      .wrap { padding-left:12px; padding-right:12px; }
+      .brand img { width:40px; height:40px; border-radius:11px; }
+      h1 { font-size:1.34rem; }
+      .btn.icon { width:40px; height:40px; min-height:40px; border-radius:11px; }
+      .app-row { min-height:66px; grid-template-columns:42px minmax(0,1fr) auto; }
+      .mono { width:40px; height:40px; }
+      .square-action { width:36px; height:36px; }
     }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <div class="top">
-      <div class="title">
-        <img src="/apps/apple-touch-icon.png" alt="Apps Manager" />
-        <h1>Apps Manager</h1>
+    <header class="top">
+      <div class="brand">
+        <img src="/apps/apple-touch-icon.png" alt="Tailnet Apps" />
+        <h1>Tailnet Apps</h1>
       </div>
-      <button id="refreshBtn" class="btn primary">Sync</button>
-    </div>
-    <p class="meta" id="updatedAt">Loading…</p>
-    <p class="legend">Update pulls the latest app code from GitHub. Your app data stays local.</p>
+      <div class="sync-block">
+        <div class="synced" id="updatedAt">syncing</div>
+        <button id="refreshBtn" class="btn icon" type="button" aria-label="Sync">⟳</button>
+      </div>
+    </header>
 
-    <section id="groups"></section>
-    <div id="log">Ready.</div>
+    <div id="updateBanner" class="update-banner" hidden></div>
+    <div id="actionFeedback" class="action-feedback" role="status" aria-live="polite" aria-atomic="true" hidden></div>
+
+    <div class="toolbar">
+      <div class="view-toggle" role="tablist" aria-label="View mode">
+        <button id="listViewBtn" type="button" role="tab" aria-label="List view"><span class="toggle-icon list-icon" aria-hidden="true"><i></i><i></i><i></i></span></button>
+        <button id="tileViewBtn" type="button" role="tab" aria-label="Tile view"><span class="toggle-icon grid-icon" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></button>
+      </div>
+      <div id="summary" class="summary">loading apps</div>
+    </div>
+
+    <main class="main-shell">
+      <section id="appsSurface" class="apps-surface list" aria-label="Tailnet apps"></section>
+      <div id="detailBackdrop" class="detail-backdrop" onclick="closeDetail()"></div>
+      <aside id="detailPanel" class="detail-panel" data-empty="true" aria-label="App details"></aside>
+    </main>
+
+    <div id="log"></div>
   </div>
 
   <script>
-    const groupsEl = document.getElementById('groups');
+    const appsSurface = document.getElementById('appsSurface');
+    const detailPanel = document.getElementById('detailPanel');
+    const detailBackdrop = document.getElementById('detailBackdrop');
     const log = document.getElementById('log');
     const updatedAt = document.getElementById('updatedAt');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const updateBanner = document.getElementById('updateBanner');
+    const actionFeedback = document.getElementById('actionFeedback');
+    const summaryEl = document.getElementById('summary');
+    const listViewBtn = document.getElementById('listViewBtn');
+    const tileViewBtn = document.getElementById('tileViewBtn');
+
+    const state = {
+      apps: [],
+      data: null,
+      selectedAppId: null,
+      viewMode: localStorage.getItem('appsManagerViewMode') || 'list',
+      developmentOpen: localStorage.getItem('appsManagerDevelopmentOpen') === '1',
+      tilePress: null,
+      suppressTileClick: null,
+      pendingActions: new Set(),
+      actionFeedback: null,
+    };
+
+    const STATUS_CACHE_KEY = 'appsManagerStatusCache:v2';
+    const SYNC_TIME_FORMAT = { hour:'numeric', minute:'2-digit' };
 
     function esc(s) {
       return String(s ?? '').replace(/[&<>'"]/g, m => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[m]));
     }
 
     function stateFor(app) {
-      if (!app.installed) return { cls: 'state-bad', label: 'Missing' };
-      if (!app.serviceActive) return { cls: 'state-bad', label: 'Down' };
-      if (!app.healthOk) return { cls: 'state-warn', label: 'Needs attention' };
-      return { cls: 'state-good', label: 'Healthy' };
+      if (!app.installed) return { cls:'state-bad', tone:'bad', rail:'var(--bad)', label:'Missing' };
+      if (app.serviceKnown && !app.serviceActive) return { cls:'state-bad', tone:'bad', rail:'var(--bad)', label:'Down' };
+      if (!app.healthOk) return { cls:'state-warn', tone:'warn', rail:'var(--warn)', label:'Needs attention' };
+      return { cls:'state-good', tone:'good', rail:'var(--ok)', label: app.serviceKnown ? 'Healthy' : 'Running' };
     }
 
     function updateFor(app) {
       const g = app.git || {};
       const release = app.release || {};
       const updateAvailable = !!g.updateAvailable || !!release.outdated;
-      const canGitUpdate = !!app.canUpdate && !!g.tracked && !!g.canCheck && !g.diverged && Number(g.ahead || 0) === 0;
 
-      if (!canGitUpdate) {
+      if (!app.repoLinked) {
+        return { canUpdate:false, updateLabel:'Local', updateAvailable:false, summary:'Local only', tone:'local', reason:'No remote repository linked.' };
+      }
+
+      if (updateAvailable && app.canUpdate) {
         return {
-          canUpdate:false,
-          updateLabel:updateAvailable ? 'Manual' : 'Latest',
-          updateAvailable,
-          reason:updateAvailable
-            ? 'Update available, but this repo is not in a safe auto-update state.'
-            : 'Latest',
+          canUpdate:true,
+          updateLabel:'Update',
+          updateAvailable:true,
+          summary:'Update available',
+          tone:'update',
+          reason:Number(g.behind || 0) > 0 ? `Behind by ${Number(g.behind || 0)} commit(s).` : 'Older than latest release date.',
         };
       }
 
       if (updateAvailable) {
         return {
-          canUpdate:true,
-          updateLabel:'Update',
+          canUpdate:false,
+          updateLabel:'Manual',
           updateAvailable:true,
-          reason:Number(g.behind || 0) > 0 ? `Behind by ${Number(g.behind || 0)} commit(s).` : 'Older than latest release date.',
+          summary:'Manual update',
+          tone:'update',
+          reason:'Update available, but this repo is not in a safe auto-update state.',
         };
       }
 
-      return { canUpdate:false, updateLabel:'Latest', updateAvailable:false, reason:'Latest' };
+      if (g.tracked && g.cleanKnown === false) {
+        return { canUpdate:false, updateLabel:'Manual', updateAvailable:false, summary:'Check failed', tone:'forked', reason:'Repository cleanliness could not be verified' };
+      }
+
+      if (g.dirty) {
+        return { canUpdate:false, updateLabel:'Latest', updateAvailable:false, summary:'Forked', tone:'forked', reason:'Local repo has uncommitted changes.' };
+      }
+
+      return { canUpdate:false, updateLabel:'Latest', updateAvailable:false, summary:'Up to date', tone:'latest', reason:'Latest' };
+    }
+
+    function badgeFor(app) {
+      const update = updateFor(app);
+      if (update.updateAvailable) return { label:'UPDATE', cls:'update' };
+      if (!app.repoLinked) return { label:'LOCAL', cls:'local' };
+      if (app.git?.dirty) return { label:'FORKED', cls:'forked' };
+      return { label:'REMOTE', cls:'latest' };
     }
 
     async function api(path, opts) {
@@ -255,97 +535,610 @@
       return json;
     }
 
-    function renderCard(app) {
-      const state = stateFor(app);
-      const update = updateFor(app);
-      const toggleDisabled = !app.canToggleAutostart;
+    function isStatusPayload(data) {
+      return data && typeof data === 'object' && Array.isArray(data.apps);
+    }
+
+
+    function syncTimeLabel(prefix, when = Date.now()) {
+      const timestamp = Number(when) || Date.now();
+      return `${prefix}<br>${new Date(timestamp).toLocaleTimeString([], SYNC_TIME_FORMAT)}`;
+    }
+
+    function readStatusCache() {
+      try {
+        const raw = localStorage.getItem(STATUS_CACHE_KEY);
+        if (!raw) return null;
+        const cached = JSON.parse(raw);
+        if (!cached || cached.version !== 2 || !isStatusPayload(cached.data)) return null;
+        return cached;
+      } catch {
+        return null;
+      }
+    }
+
+    function saveStatusCache(data) {
+      if (!isStatusPayload(data)) return;
+      try {
+        localStorage.setItem(STATUS_CACHE_KEY, JSON.stringify({
+          version: 2,
+          cachedAt: Date.now(),
+          data,
+        }));
+      } catch {}
+    }
+
+    function applyStatusData(data, { cached = false, cachedAt = null } = {}) {
+      state.data = data;
+      state.apps = data.apps || [];
+      if (state.selectedAppId && !appById(state.selectedAppId)) {
+        state.selectedAppId = null;
+        localStorage.removeItem('appsManagerSelectedApp');
+      }
+      renderSummary(data);
+      renderUpdateBanner(data);
+      renderApps();
+      renderDetail();
+      renderActionFeedback();
+      updatedAt.classList.toggle('stale', cached);
+      updatedAt.innerHTML = syncTimeLabel(cached ? 'cached' : 'synced', cached ? cachedAt : Date.now());
+    }
+
+    function hydrateFromCache() {
+      const cached = readStatusCache();
+      if (!cached) return false;
+      applyStatusData(cached.data, { cached: true, cachedAt: cached.cachedAt });
+      return true;
+    }
+
+    function monogram(app) {
+      const raw = String(app.name || app.path || '?').replace(/[^a-zA-Z0-9 ]+/g, ' ').trim();
+      const words = raw.split(/\s+/).filter(Boolean).filter(w => !['by','the','app'].includes(w.toLowerCase()));
+      const letters = (words.length >= 2 ? `${words[0][0]}${words[words.length - 1][0]}` : raw.slice(0, 2)).toUpperCase();
+      return letters || '?';
+    }
+
+    function appIconRoot(app) {
+      const rawPath = String(app.path || '/').trim() || '/';
+      const normalized = `/${rawPath.replace(/^\/+/, '').replace(/\/+$/, '')}`;
+      return new URL(`${normalized === '/' ? '' : normalized}/`, window.location.origin).href;
+    }
+
+    function iconCandidatesFor(app) {
+      const candidates = [];
+      const add = value => {
+        const raw = String(value || '').trim();
+        if (raw && !candidates.includes(raw)) candidates.push(raw);
+      };
+      add(app.icon);
+      const routeId = String(app.path || 'root')
+        .replace(/^\/+|\/+$/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '') || 'root';
+      add(new URL(`/apps/assets/app-${routeId}.png`, window.location.origin).href);
+      const root = appIconRoot(app);
+      const standard = ['apple-touch-icon.png', 'icon-512.png', 'icon-192.png', 'icon.svg'];
+      const favicons = ['static/apple-touch-icon.png', 'static/favicon-512.png', 'static/favicon-192.png', 'static/favicon.svg', 'favicon-512.png', 'favicon-192.png', 'favicon.svg', 'favicon.ico'];
+      const names = [...standard, ...favicons];
+      for (const name of names) add(new URL(name, root).href);
+      return candidates;
+    }
+
+    function nextIconCandidate(img) {
+      const candidates = String(img?.dataset?.candidates || '').split('|').filter(Boolean);
+      const next = candidates.shift();
+      if (next) {
+        img.dataset.candidates = candidates.join('|');
+        img.src = next;
+        return;
+      }
+      img.hidden = true;
+      img.closest('.mono')?.classList.add('fallback-visible');
+    }
+
+    function monogramHtml(app) {
+      const label = esc(monogram(app));
+      const candidates = iconCandidatesFor(app);
+      if (!candidates.length) return `<span class="mono" aria-hidden="true"><span class="icon-fallback">${label}</span></span>`;
+      return `<span class="mono has-icon" aria-hidden="true"><img class="app-icon" src="${esc(candidates[0])}" alt="" loading="lazy" decoding="async" data-candidates="${esc(candidates.slice(1).join('|'))}" onerror="nextIconCandidate(this)"><span class="icon-fallback">${label}</span></span>`;
+    }
+
+    function shortCommit(value) {
+      const raw = String(value || '').trim();
+      return raw ? raw.slice(0, 7) : null;
+    }
+
+    function versionParts(release, kind) {
+      return {
+        date: release?.[`${kind}Date`] || null,
+        commit: shortCommit(release?.[`${kind}Commit`]),
+      };
+    }
+
+    function versionLabel(release, kind, empty = '—') {
+      const { date, commit } = versionParts(release, kind);
+      if (!date && !commit) return empty;
+      return [date, commit].filter(Boolean).join(' · ');
+    }
+
+    function sourceFor(app) {
       const release = app.release || {};
-      const localLabel = release.localLabel || 'unknown';
-      const latestLabel = release.latestLabel || 'unknown';
-      const latestSource = release.source === 'humanitylabs' ? 'humanitylabs.org' : 'git upstream';
-      const updateTone = update.updateAvailable ? 'update-warn' : 'update-ok';
-      const updateSummary = update.updateAvailable
-        ? (update.canUpdate ? 'Update available' : 'Update available (manual check needed)')
-        : 'Up to date';
-      const updateBtnTitle = update.canUpdate
-        ? 'Pull latest code and restart this app'
-        : (update.reason || 'No update action needed');
+      if (!app.repoLinked) return 'built by your agent';
+      if (app.sourceHost) return app.sourceHost;
+      if (release.source === 'git') return 'git upstream';
+      return 'remote linked';
+    }
 
+    function secondarySourceFor(app) {
+      const release = app.release || {};
+      if (release.source === 'git') return 'git upstream';
+      if (release.sourceHost && release.sourceHost !== app.sourceHost) return release.sourceHost;
+      return null;
+    }
+
+    function appIdentityKey(app) {
+      return app?.actionKey || app?.id || app?.path || '';
+    }
+
+    function appById(appId) {
+      const exact = state.apps.find(app => appIdentityKey(app) === appId);
+      if (exact) return exact;
+      const legacyMatches = state.apps.filter(app => app.id === appId);
+      return legacyMatches.length === 1 ? legacyMatches[0] : null;
+    }
+
+    function isSelfApp(appOrId) {
+      const app = typeof appOrId === 'string' ? appById(appOrId) : appOrId;
+      if (!app) return appOrId === 'appsmanager';
+      const path = String(app.path || '').replace(/\/+$/, '') || '/';
+      return app.id === 'appsmanager' || path === '/apps';
+    }
+
+    function disabledOpenButton(label = 'Already here') {
+      return `<button class="square-action disabled" type="button" disabled title="${esc(label)}" aria-label="${esc(label)}">↗</button>`;
+    }
+
+    function launchUrlFor(appOrUrl) {
+      const raw = typeof appOrUrl === 'string' ? appOrUrl : appOrUrl?.publicUrl;
+      const href = String(raw || '').trim();
+      if (!href) return '';
+      try {
+        const u = new URL(href, window.location.href);
+        if (!['http:', 'https:'].includes(u.protocol)) return '';
+        const looksLikeAppRoot = !u.pathname.endsWith('/') && !u.pathname.split('/').pop().includes('.');
+        if (looksLikeAppRoot) u.pathname = `${u.pathname}/`;
+        return u.href;
+      } catch {
+        return href;
+      }
+    }
+
+    function isNativeLauncher() {
+      return /\bTailnetAppsNative\//i.test(navigator.userAgent || '');
+    }
+
+    function launchHrefFor(appOrUrl) {
+      return launchUrlFor(appOrUrl);
+    }
+
+    function launchTargetAttr() {
+      if (isNativeLauncher()) return '';
+      return ' target="_blank" rel="noopener noreferrer"';
+    }
+
+    function stopLaunchPropagation(event) {
+      event?.stopPropagation?.();
+    }
+
+    function viewMode() {
+      return state.viewMode === 'tiles' ? 'tiles' : 'list';
+    }
+
+    function renderViewToggle() {
+      const mode = viewMode();
+      listViewBtn.classList.toggle('active', mode === 'list');
+      tileViewBtn.classList.toggle('active', mode === 'tiles');
+      listViewBtn.setAttribute('aria-selected', String(mode === 'list'));
+      tileViewBtn.setAttribute('aria-selected', String(mode === 'tiles'));
+    }
+
+    function renderSummary(data) {
+      const apps = data.apps || [];
+      const localCount = apps.filter(app => badgeFor(app).label === 'LOCAL').length;
+      const forkedCount = apps.filter(app => badgeFor(app).label === 'FORKED').length;
+      const updateCount = apps.filter(app => updateFor(app).updateAvailable).length;
+      const parts = [`${apps.length} app${apps.length === 1 ? '' : 's'}`];
+      if (localCount) parts.push(`${localCount} local`);
+      if (forkedCount) parts.push(`${forkedCount} forked`);
+      if (updateCount) parts.push(`${updateCount} update${updateCount === 1 ? '' : 's'}`);
+      summaryEl.textContent = parts.join(' · ');
+    }
+
+    function renderUpdateBanner(data) {
+      const apps = data.apps || [];
+      const updateable = apps.filter(app => {
+        const update = updateFor(app);
+        return update.updateAvailable && update.canUpdate;
+      });
+      const count = updateable.length;
+      if (!count) {
+        updateBanner.hidden = true;
+        updateBanner.innerHTML = '';
+        return;
+      }
+      const names = updateable.map(app => app.name).join(', ');
+      const busy = hasPendingUpdate();
+      updateBanner.hidden = false;
+      updateBanner.innerHTML = `
+        <div class="update-copy"><span class="update-dot"></span><span><strong>${count} update${count === 1 ? '' : 's'}</strong> · ${esc(names)}</span></div>
+        <button class="btn primary" type="button" ${busy ? 'disabled aria-busy="true"' : ''} onclick="runUpdateAll(event)">${busy ? 'Updating…' : 'Update all'}</button>
+      `;
+    }
+
+    function actionKey(appId, action) {
+      return `${action}:${appId}`;
+    }
+
+    function hasPendingUpdate() {
+      return [...state.pendingActions].some(key => key === 'updateAll' || key.startsWith('update:'));
+    }
+
+    function isUpdatePending(appId) {
+      return state.pendingActions.has('updateAll') || state.pendingActions.has(actionKey(appId, 'update'));
+    }
+
+    function setActionFeedback(tone, message, appId = null) {
+      state.actionFeedback = { tone, message, appId };
+      renderActionFeedback();
+    }
+
+    function renderActionFeedback() {
+      const feedback = state.actionFeedback;
+      if (!feedback) {
+        actionFeedback.hidden = true;
+        actionFeedback.className = 'action-feedback';
+        actionFeedback.textContent = '';
+        return;
+      }
+      actionFeedback.hidden = false;
+      actionFeedback.className = `action-feedback ${feedback.tone}`;
+      actionFeedback.textContent = feedback.message;
+    }
+
+    function renderActionState() {
+      renderUpdateBanner(state.data || { apps: state.apps });
+      renderApps();
+      renderDetail();
+      renderActionFeedback();
+    }
+
+    function renderListItem(app) {
+      const appId = appIdentityKey(app);
+      const status = stateFor(app);
+      const badge = badgeFor(app);
+      const update = updateFor(app);
+      const active = appId === state.selectedAppId;
+      const self = isSelfApp(app);
+      const showUpdateButton = update.updateAvailable && update.canUpdate;
+      const updatePending = isUpdatePending(appId);
+      const launchUrl = launchUrlFor(app);
+      const launchHref = launchHrefFor(launchUrl);
+      const launchAttrs = launchTargetAttr();
       return `
-        <article class="card">
-          <div class="head">
-            <img class="icon" src="${esc(app.icon || '/apps/icon-192.png')}" alt="${esc(app.name)} icon" loading="lazy" />
-            <div class="head-main">
-              <div class="name">${esc(app.name)}</div>
-              <div class="path">${esc(app.path)}</div>
-            </div>
-            <div class="head-autostart" title="Auto-start">
-              <span>A</span>
-              <button class="toggle mini ${app.serviceEnabled ? 'on' : ''}" ${toggleDisabled ? 'disabled' : ''} onclick="toggleAutostart('${esc(app.id)}', ${app.serviceEnabled ? 'false' : 'true'})" aria-label="Toggle auto-start for ${esc(app.name)}">
-                <span class="thumb"></span>
-              </button>
-            </div>
+        <article class="app-row ${active ? 'active' : ''} ${self ? 'self-app' : ''}" style="--rail:${status.rail}" role="button" tabindex="0" onclick="selectApp('${esc(appId)}')" onkeydown="rowKey(event,'${esc(appId)}')" aria-label="${esc(app.name)} details">
+          ${monogramHtml(app)}
+          <div class="app-main">
+            <div class="name-line"><span class="app-name">${esc(app.name)}</span><span class="badge ${badge.cls}">${esc(badge.label)}</span></div>
+            <div class="app-path">${esc(app.path)}</div>
           </div>
-
-          <div class="status-row ${state.cls}">
-            <span class="state-dot"></span>
-            <span class="state-label">${state.label}${update.updateAvailable ? ' • Update available' : ''}</span>
-          </div>
-
-          <div class="meta-row">
-            <span class="${updateTone}">${esc(updateSummary)}</span>
-            <span class="version-source">Latest from ${esc(latestSource)}</span>
-          </div>
-
-          <div class="version-stack">
-            <div class="version-line"><span class="version-label">Installed:</span><span>${esc(localLabel)}</span></div>
-            <div class="version-line"><span class="version-label">Latest:</span><span>${esc(latestLabel)}</span></div>
-          </div>
-
-          <div class="actions">
-            <a class="btn open" href="${esc(app.publicUrl)}" target="_blank" rel="noopener noreferrer">Open</a>
-            <button class="btn" onclick="runAction('${esc(app.id)}','restart')">Restart</button>
-            <button class="btn ${update.canUpdate ? 'primary' : ''}" title="${esc(updateBtnTitle)}" ${update.canUpdate ? '' : 'disabled'} onclick="runAction('${esc(app.id)}','update')">${esc(update.updateLabel)}</button>
+          <div class="app-actions">
+            ${showUpdateButton ? `<button class="square-action warn" type="button" title="${updatePending ? 'Updating' : 'Update'}" aria-label="${updatePending ? `Updating ${esc(app.name)}` : `Update ${esc(app.name)}`}" ${updatePending ? 'disabled aria-busy="true"' : ''} onclick="runActionFromEvent(event,'${esc(appId)}','update')">${updatePending ? '…' : '↥'}</button>` : ''}
+            ${self ? disabledOpenButton('Current app') : `<a class="square-action" href="${esc(launchHref)}"${launchAttrs} aria-label="Launch ${esc(app.name)}" onclick="stopLaunchPropagation(event)">↗</a>`}
           </div>
         </article>
       `;
     }
 
-    function renderGroup(group, apps) {
+    function renderTileItem(app) {
+      const appId = appIdentityKey(app);
+      const status = stateFor(app);
+      const active = appId === state.selectedAppId;
+      const self = isSelfApp(app);
+      const launchUrl = launchUrlFor(app);
+      const launchHref = self ? '#' : launchHrefFor(launchUrl);
+      const launchAttrs = self ? '' : launchTargetAttr();
       return `
-        <section class="group">
-          <p class="group-label">${esc(group.label)}</p>
-          <p class="group-desc">${esc(group.description)}</p>
-          <div class="grid">${apps.map(renderCard).join('')}</div>
-        </section>
+        <a class="app-tile ${active ? 'active' : ''} ${self ? 'self-app' : ''}" href="${esc(launchHref)}"${launchAttrs}
+          onpointerdown="tilePressStart(event,'${esc(appId)}')"
+          onpointerup="tilePressEnd(event,'${esc(appId)}')"
+          onpointercancel="tilePressCancel('${esc(appId)}')"
+          onpointerleave="tilePressCancel('${esc(appId)}')"
+          onclick="tileClick(event,'${esc(appId)}')"
+          oncontextmenu="tileContext(event,'${esc(appId)}')"
+          onkeydown="tileKey(event,'${esc(appId)}')"
+          aria-label="${esc(app.name)}">
+          <span class="tile-icon-wrap">
+            ${monogramHtml(app)}
+            <span class="tile-indicator ${status.cls}" aria-hidden="true"><span class="state-dot"></span></span>
+          </span>
+          <span class="tile-name">${esc(app.name)}</span>
+        </a>
       `;
     }
 
+    function renderApps() {
+      renderViewToggle();
+      const mode = viewMode();
+      appsSurface.className = `apps-surface ${mode}`;
+      if (!state.apps.length) {
+        appsSurface.innerHTML = '<div class="empty">No Tailscale Serve apps are currently listed.</div>';
+        return;
+      }
+      const renderItem = mode === 'tiles' ? renderTileItem : renderListItem;
+      const primaryApps = state.apps.filter(app => app.group !== 'development');
+      const developmentApps = state.apps.filter(app => app.group === 'development');
+      const primaryItems = primaryApps.map(renderItem).join('');
+      const developmentSection = developmentApps.length ? `
+        <details class="development-section" ${state.developmentOpen ? 'open' : ''} ontoggle="setDevelopmentOpen(this.open)">
+          <summary>
+            <span class="development-summary-copy"><span>In Development</span><span class="development-count">${developmentApps.length}</span></span>
+            <span class="development-chevron" aria-hidden="true">⌄</span>
+          </summary>
+          <div class="development-items ${mode}">${developmentApps.map(renderItem).join('')}</div>
+        </details>
+      ` : '';
+      appsSurface.innerHTML = mode === 'tiles'
+        ? `${primaryItems}${developmentSection}<div class="tile-hint">tap to open · long-press for details</div>`
+        : `${primaryItems}${developmentSection}`;
+    }
+
+    function setDevelopmentOpen(open) {
+      state.developmentOpen = Boolean(open);
+      localStorage.setItem('appsManagerDevelopmentOpen', state.developmentOpen ? '1' : '0');
+    }
+
+    function versionRow(label, value, tone = '') {
+      return `
+        <div class="version-row">
+          <div class="version-label">${esc(label)}</div>
+          <div class="version-value ${tone}">${esc(value || '—')}</div>
+        </div>
+      `;
+    }
+
+    function renderDetail() {
+      const app = appById(state.selectedAppId);
+      if (!app) {
+        detailPanel.dataset.empty = 'true';
+        detailPanel.classList.remove('open');
+        detailBackdrop.classList.remove('open');
+        document.body.classList.remove('detail-open');
+        detailPanel.innerHTML = '<div class="detail-empty"><strong>Select an app</strong><span>Tap a row to open details and actions.</span></div>';
+        return;
+      }
+
+      const appId = appIdentityKey(app);
+      const status = stateFor(app);
+      const badge = badgeFor(app);
+      const update = updateFor(app);
+      const self = isSelfApp(app);
+      const release = app.release || {};
+      const latestCommit = shortCommit(release.latestCommit || app.git?.remoteSha);
+      const updateText = latestCommit ? `Update to ${latestCommit}` : 'Update app';
+      const updatePending = isUpdatePending(appId);
+      const subtitleParts = [app.path, sourceFor(app), secondarySourceFor(app)].filter(Boolean);
+      const launchUrl = launchUrlFor(app);
+      const launchHref = launchHrefFor(launchUrl);
+      const launchAttrs = launchTargetAttr();
+      const pwaState = window.matchMedia('(display-mode: standalone)').matches ? 'Installed PWA shell' : 'Not detected on this device';
+      const detailFeedback = state.actionFeedback?.appId === appId ? state.actionFeedback : null;
+
+      detailPanel.dataset.empty = 'false';
+      detailPanel.classList.add('open');
+      detailBackdrop.classList.add('open');
+      document.body.classList.toggle('detail-open', window.matchMedia('(max-width: 860px)').matches);
+
+      detailPanel.innerHTML = `
+        <div class="detail-content">
+          <div class="sheet-handle" aria-hidden="true"></div>
+          <div class="detail-head">
+            ${monogramHtml(app)}
+            <div class="detail-title">
+              <h2>${esc(app.name)}</h2>
+              <div class="detail-subtitle">${esc(subtitleParts.join(' · '))}</div>
+            </div>
+          </div>
+
+          <div class="detail-status">
+            <span class="status-pill ${status.cls}"><span class="state-dot"></span>${esc(status.label)}</span>
+            <span class="badge ${badge.cls}">${esc(badge.label)}</span>
+          </div>
+
+          <div class="version-card">
+            ${versionRow('Installed', versionLabel(release, 'local', app.repoLinked ? 'unknown' : 'local'))}
+            ${versionRow('Upstream', versionLabel(release, 'latest', '—'), update.updateAvailable ? 'warn' : '')}
+            ${versionRow('PWA', pwaState)}
+          </div>
+
+          <button class="btn warn detail-update ${update.canUpdate ? 'show' : ''}" type="button" ${updatePending ? 'disabled aria-busy="true"' : ''} onclick="runAction('${esc(appId)}','update')">${updatePending ? 'Updating…' : esc(updateText)}</button>
+          ${detailFeedback ? `<div class="detail-feedback ${esc(detailFeedback.tone)}" aria-hidden="true">${esc(detailFeedback.message)}</div>` : ''}
+
+          <div class="detail-actions">
+            ${self ? '<button class="btn primary disabled" type="button" disabled>Current app</button>' : `<a class="btn primary" href="${esc(launchHref)}"${launchAttrs} onclick="stopLaunchPropagation(event)">Open app</a>`}
+            <button class="btn" type="button" data-url="${esc(launchUrl)}" onclick="copyUrl(this.dataset.url)">Copy URL</button>
+            <button class="btn subtle" type="button" ${app.canRestart ? '' : 'disabled'} onclick="runAction('${esc(appId)}','restart')">Restart</button>
+            <button class="btn subtle" type="button" onclick="showLogs('${esc(appId)}')">Logs</button>
+          </div>
+
+          <p class="detail-note">Open hands the link to Android so an installed PWA can take over; otherwise your browser opens the URL.</p>
+        </div>
+      `;
+    }
+
+    function selectApp(appId) {
+      const url = `${window.location.pathname}${window.location.search}#app=${encodeURIComponent(appId)}`;
+      const nextState = { ...(history.state || {}), appsManagerHome: true, appsManagerDetail: appId };
+      if (history.state?.appsManagerDetail) history.replaceState(nextState, '', url);
+      else history.pushState(nextState, '', url);
+      state.selectedAppId = appId;
+      renderApps();
+      renderDetail();
+    }
+
+    function closeDetail(fromHistory = false) {
+      if (!fromHistory && history.state?.appsManagerDetail) {
+        history.back();
+        return;
+      }
+      state.selectedAppId = null;
+      renderApps();
+      renderDetail();
+    }
+
+    function detailAppIdFromLocation() {
+      if (!window.location.hash.startsWith('#app=')) return null;
+      try { return decodeURIComponent(window.location.hash.slice(5)); }
+      catch { return null; }
+    }
+
+    function initializeDetailHistory() {
+      localStorage.removeItem('appsManagerSelectedApp');
+      const initialAppId = detailAppIdFromLocation();
+      const homeUrl = `${window.location.pathname}${window.location.search}`;
+      if (initialAppId && history.state?.appsManagerDetail === initialAppId) {
+        state.selectedAppId = initialAppId;
+        return;
+      }
+      const homeState = { ...(history.state || {}), appsManagerHome: true };
+      delete homeState.appsManagerDetail;
+      history.replaceState(homeState, '', homeUrl);
+      if (initialAppId) {
+        history.pushState({ ...homeState, appsManagerDetail: initialAppId }, '', `${homeUrl}#app=${encodeURIComponent(initialAppId)}`);
+        state.selectedAppId = initialAppId;
+      }
+    }
+
+    function setViewMode(mode) {
+      state.viewMode = mode === 'tiles' ? 'tiles' : 'list';
+      localStorage.setItem('appsManagerViewMode', state.viewMode);
+      renderApps();
+    }
+
+    function rowKey(event, appId) {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        selectApp(appId);
+      }
+    }
+
+    function openApp(event, url) {
+      event?.preventDefault?.();
+      event?.stopPropagation?.();
+      const href = launchHrefFor(url);
+      if (!href) return;
+      window.location.href = href;
+    }
+
+    function tilePressStart(event, appId) {
+      if (event.pointerType === 'mouse' && event.button !== 0) return;
+      tilePressCancel();
+      state.tilePress = {
+        appId,
+        fired: false,
+        timer: window.setTimeout(() => {
+          if (!state.tilePress || state.tilePress.appId !== appId) return;
+          state.tilePress.fired = true;
+          state.suppressTileClick = appId;
+          selectApp(appId);
+          if (navigator.vibrate) navigator.vibrate(12);
+          window.setTimeout(() => {
+            if (state.suppressTileClick === appId) state.suppressTileClick = null;
+          }, 450);
+        }, 520),
+      };
+    }
+
+    function tilePressEnd(event, appId) {
+      if (!state.tilePress || state.tilePress.appId !== appId) return;
+      const fired = state.tilePress.fired;
+      tilePressCancel();
+      if (fired) {
+        event?.preventDefault();
+        event?.stopPropagation();
+      }
+    }
+
+    function tilePressCancel(appId = null) {
+      if (!state.tilePress) return;
+      if (appId && state.tilePress.appId !== appId) return;
+      window.clearTimeout(state.tilePress.timer);
+      state.tilePress = null;
+    }
+
+    function tileClick(event, appId) {
+      if (state.suppressTileClick === appId) {
+        event?.preventDefault();
+        event?.stopPropagation();
+        state.suppressTileClick = null;
+        return;
+      }
+      if (isSelfApp(appId)) {
+        event?.preventDefault?.();
+        event?.stopPropagation?.();
+        selectApp(appId);
+      }
+    }
+
+    function tileContext(event, appId) {
+      event.preventDefault();
+      tilePressCancel(appId);
+      selectApp(appId);
+    }
+
+    function tileKey(event, appId) {
+      if (event.key === 'Enter') {
+        if (isSelfApp(appId)) {
+          event.preventDefault();
+          selectApp(appId);
+        }
+      } else if (event.key === ' ') {
+        event.preventDefault();
+        selectApp(appId);
+      }
+    }
+
+    function runActionFromEvent(event, appId, action) {
+      event?.stopPropagation();
+      if (event?.currentTarget) event.currentTarget.disabled = true;
+      runAction(appId, action);
+    }
+
     async function load(force = false) {
+      refreshBtn.classList.add('syncing');
+      refreshBtn.setAttribute('aria-busy', 'true');
+      if (!state.apps.length) updatedAt.textContent = 'syncing';
       try {
         const data = await api(`/apps/api/status${force ? '?refresh=1' : ''}`);
-        const groups = data.groups || {};
-        const byGroup = {
-          custom: data.apps.filter(app => app.group === 'custom'),
-          base: data.apps.filter(app => app.group === 'base'),
-        };
-
-        const out = [];
-        if (groups.custom && byGroup.custom.length) out.push(renderGroup(groups.custom, byGroup.custom));
-        if (groups.base && byGroup.base.length) out.push(renderGroup(groups.base, byGroup.base));
-
-        groupsEl.innerHTML = out.join('');
-        const releaseMeta = data.releases || {};
-        const releaseSuffix = releaseMeta.updatedAt
-          ? ` · release list ${new Date(releaseMeta.updatedAt).toLocaleDateString()}`
-          : (releaseMeta.error ? ' · release list unavailable' : '');
-        updatedAt.textContent = `Updated ${new Date().toLocaleTimeString()}${releaseSuffix}`;
+        applyStatusData(data);
+        saveStatusCache(data);
+        if (log.textContent.startsWith('Refresh failed:')) log.textContent = '';
       } catch (err) {
         log.textContent = `Refresh failed: ${err.message}`;
+      } finally {
+        refreshBtn.classList.remove('syncing');
+        refreshBtn.removeAttribute('aria-busy');
       }
     }
 
     async function runAction(appId, action) {
+      const key = actionKey(appId, action);
+      if (state.pendingActions.has(key) || (action === 'update' && hasPendingUpdate())) return;
+      const app = appById(appId);
+      const appName = app?.name || appId;
+      state.pendingActions.add(key);
+      setActionFeedback('pending', `${action === 'update' ? 'Updating' : 'Restarting'} ${appName}…`, appId);
+      renderActionState();
       log.textContent = `${action} ${appId}…`;
       try {
         const out = await api('/apps/api/action', {
@@ -353,33 +1146,127 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ appId, action }),
         });
-        log.textContent = `${action} ${appId}: ${out.ok ? 'done' : 'failed'}\n${out.output || ''}`;
+        if (!out?.ok) throw new Error(out?.error || 'Action failed');
+        const restartPending = action === 'restart' && /scheduled|outcome pending/i.test(String(out.output || ''));
+        log.textContent = `${action} ${appId}: ${restartPending ? 'scheduled; outcome pending' : (out.ok ? 'done' : 'failed')}\n${out.output || ''}`;
+        setActionFeedback('success', restartPending
+          ? `${appName} restart scheduled; outcome pending.`
+          : `${appName} ${action === 'update' ? 'updated' : 'restarted'} successfully.`, appId);
         await load(true);
       } catch (err) {
         log.textContent = `${action} ${appId} failed: ${err.message}`;
+        const reason = String(err?.message || err).split('\n')[0];
+        setActionFeedback('error', `${action === 'update' ? 'Update' : 'Restart'} failed for ${appName}: ${reason}`, appId);
+      } finally {
+        state.pendingActions.delete(key);
+        renderActionState();
       }
     }
 
-    async function toggleAutostart(appId, enabled) {
-      log.textContent = `${enabled ? 'enable' : 'disable'} autostart ${appId}…`;
+    async function runUpdateAll(event) {
+      if (hasPendingUpdate()) return;
+      event?.currentTarget && (event.currentTarget.disabled = true);
+      state.pendingActions.add('updateAll');
+      const count = state.apps.filter(app => updateFor(app).updateAvailable && updateFor(app).canUpdate).length;
+      setActionFeedback('pending', `Updating ${count} app${count === 1 ? '' : 's'}…`);
+      renderActionState();
+      log.textContent = 'update all…';
       try {
         const out = await api('/apps/api/action', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ appId, action: 'setAutostart', enabled }),
+          body: JSON.stringify({ action: 'updateAll' }),
         });
-        log.textContent = `autostart ${appId}: ${out.ok ? 'done' : 'failed'}\n${out.output || ''}`;
+        if (!out?.ok) throw new Error(out?.error || 'Update all failed');
+        log.textContent = `update all: ${out.ok ? 'done' : 'failed'}\n${out.output || ''}`;
+        const updatedCount = Array.isArray(out.updated) ? out.updated.length : count;
+        setActionFeedback('success', updatedCount
+          ? `${updatedCount} app${updatedCount === 1 ? '' : 's'} updated successfully.`
+          : 'Everything is already up to date.');
         await load(true);
       } catch (err) {
-        log.textContent = `autostart ${appId} failed: ${err.message}`;
+        log.textContent = `update all failed: ${err.message}`;
+        const reason = String(err?.message || err).split('\n')[0];
+        setActionFeedback('error', `Update all failed: ${reason}`);
+      } finally {
+        state.pendingActions.delete('updateAll');
+        renderActionState();
       }
     }
 
-    document.getElementById('refreshBtn').addEventListener('click', () => load(true));
+    async function copyUrl(url) {
+      const text = String(url || '').trim();
+      if (!text) return;
+      try {
+        if (navigator.clipboard?.writeText && window.isSecureContext) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          ta.setAttribute('readonly', '');
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          ta.style.pointerEvents = 'none';
+          document.body.appendChild(ta);
+          ta.select();
+          const ok = document.execCommand('copy');
+          ta.remove();
+          if (!ok) throw new Error('copy command failed');
+        }
+        log.textContent = `Copied URL:\n${text}`;
+      } catch (err) {
+        log.textContent = `Copy failed. Long-press and copy manually:\n${text}`;
+      }
+    }
+
+    function showLogs(appId) {
+      const app = appById(appId);
+      if (!app) return;
+      log.textContent = [
+        `${app.name}`,
+        `service: ${app.service || 'none linked'}`,
+        `health: ${app.healthCode || 'unknown'}${app.healthOk ? ' ok' : ''}`,
+        app.service ? `logs: journalctl --user -u ${app.service} -n 80 --no-pager` : 'logs: no linked service',
+      ].join('\n');
+    }
+
+    refreshBtn.addEventListener('click', () => load(true));
+    listViewBtn.addEventListener('click', () => setViewMode('list'));
+    tileViewBtn.addEventListener('click', () => setViewMode('tiles'));
+    window.addEventListener('keydown', event => {
+      if (event.key === 'Escape') closeDetail();
+    });
+    window.addEventListener('popstate', event => {
+      state.selectedAppId = event.state?.appsManagerDetail || detailAppIdFromLocation();
+      renderApps();
+      renderDetail();
+    });
+    window.addEventListener('resize', () => {
+      if (!state.selectedAppId) return;
+      document.body.classList.toggle('detail-open', window.matchMedia('(max-width: 860px)').matches);
+    });
+
+    initializeDetailHistory();
+    renderViewToggle();
+    hydrateFromCache();
     load(true);
     setInterval(() => load(false), 20000);
+    window.selectApp = selectApp;
+    window.closeDetail = closeDetail;
     window.runAction = runAction;
-    window.toggleAutostart = toggleAutostart;
+    window.runActionFromEvent = runActionFromEvent;
+    window.runUpdateAll = runUpdateAll;
+    window.copyUrl = copyUrl;
+    window.showLogs = showLogs;
+    window.openApp = openApp;
+    window.nextIconCandidate = nextIconCandidate;
+    window.rowKey = rowKey;
+    window.tilePressStart = tilePressStart;
+    window.tilePressEnd = tilePressEnd;
+    window.tilePressCancel = tilePressCancel;
+    window.tileClick = tileClick;
+    window.tileContext = tileContext;
+    window.tileKey = tileKey;
   </script>
 </body>
 </html>

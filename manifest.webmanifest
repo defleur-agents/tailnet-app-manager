@@ -5,6 +5,7 @@
   "start_url": "/apps/",
   "scope": "/apps/",
   "display": "standalone",
+  "capture_links": "none",
   "background_color": "#0B0B0D",
   "theme_color": "#0B0B0D",
   "icons": [
