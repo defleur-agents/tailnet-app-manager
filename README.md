@@ -74,7 +74,7 @@ Supported top-level keys:
 - `developmentPaths`: routes assigned to the development group.
 - `groups`: optional label and description overrides.
 
-Per-app hints support `id`, `name`, `service`, `proxyService`, `repoPath`, `healthUrl`, `icon`, `trailingSlash`, `group`, and `postUpdate`. `postUpdate` is an executable plus arguments, never a shell string:
+Per-app hints support `id`, `name`, `service`, `proxyService`, `repoPath`, `healthUrl`, `icon`, `trailingSlash`, `group`, `hidden`, and `postUpdate`. Route-path keys are convenient when a path is unique. When several Serve origins use the same path—commonly `/` on dedicated ports—use an absolute HTTPS route key so hints and action authority cannot collide. Ambiguous path-only hints are ignored. `postUpdate` is an executable plus arguments, never a shell string:
 
 ```json
 {
@@ -83,6 +83,11 @@ Per-app hints support `id`, `name`, `service`, `proxyService`, `repoPath`, `heal
       "service": "example-app.service",
       "repoPath": "~/apps/example-app",
       "postUpdate": ["npm", "run", "build"]
+    },
+    "https://device.tailnet.example:6080/": {
+      "id": "browser",
+      "name": "Browser",
+      "proxyService": "remote-browser.service"
     }
   }
 }

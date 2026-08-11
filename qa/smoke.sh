@@ -22,7 +22,7 @@ mkdir -p "$TMP/bin" "$TMP/www" "$TMP/proc/4242" "$TMP/proc/4243"
 printf '%s\n' '0::/user.slice/user-1000.slice/app.slice/demo8080.service' > "$TMP/proc/4242/cgroup"
 printf '%s\n' '0::/user.slice/user-1000.slice/app.slice/ambiguous-subpath-proxy.service' > "$TMP/proc/4243/cgroup"
 cat > "$TMP/apps.local.json" <<JSON
-{"apps":{"/demo":{"service":"demo.service","repoPath":"$TMP/repos/demo"},"/unknown":{"name":"Unknown Cleanliness","service":"unknown.service","repoPath":"$TMP/repos/unknown"},"/current":{"name":"Catalog Newer Only","service":"current.service","repoPath":"$TMP/source"},"/race":{"name":"No-op Pull Race","service":"race.service","repoPath":"$TMP/repos/race"},"/credential":{"name":"Credential Redaction","service":"credential.service"},"/foo/bar":{"name":"Nested Route","service":"nested.service"},"/foo-bar":{"name":"Flat Route","service":"flat.service"}}}
+{"apps":{"/demo":{"service":"demo.service","repoPath":"$TMP/repos/demo"},"/unknown":{"name":"Unknown Cleanliness","service":"unknown.service","repoPath":"$TMP/repos/unknown"},"/current":{"name":"Catalog Newer Only","service":"current.service","repoPath":"$TMP/source"},"/race":{"name":"No-op Pull Race","service":"race.service","repoPath":"$TMP/repos/race"},"/credential":{"name":"Credential Redaction","service":"credential.service"},"/foo/bar":{"name":"Nested Route","service":"nested.service"},"/foo-bar":{"name":"Flat Route","service":"flat.service"},"https://qa.tailnet.example:9443/":{"id":"port-root-a","name":"Port Root A"},"https://qa.tailnet.example:9444/":{"id":"port-root-b","name":"Port Root B"}}}
 JSON
 printf '%s\n' '{' > "$TMP/apps.invalid.json"
 
@@ -52,7 +52,7 @@ JSON
 cat > "$TMP/bin/tailscale" <<'SH'
 #!/usr/bin/env bash
 cat <<JSON
-{"Web":{"qa.tailnet.example":{"Handlers":{"/apps":{"Proxy":"http://127.0.0.1:${APP_PORT}"},"/demo":{"Proxy":"http://127.0.0.1:${FIXTURE_PORT}"},"/unknown":{"Proxy":"http://127.0.0.1:9"},"/current":{"Proxy":"http://127.0.0.1:9"},"/race":{"Proxy":"http://127.0.0.1:9"},"/credential":{"Proxy":"http://127.0.0.1:9"},"/short":{"Proxy":"http://127.0.0.1"},"/inferred":{"Proxy":"http://127.0.0.1:8080"},"/ambiguous":{"Proxy":"http://127.0.0.1:8081"},"/foo/bar":{"Proxy":"http://127.0.0.1:9"},"/foo-bar":{"Proxy":"http://127.0.0.1:9"},"/downloads/example.apk":{"Proxy":"http://127.0.0.1:${FIXTURE_PORT}"}}}}}
+{"Web":{"qa.tailnet.example:8443":{"Handlers":{"/":{"Proxy":"http://127.0.0.1:${APP_PORT}"}}},"qa.tailnet.example":{"Handlers":{"/apps":{"Proxy":"http://127.0.0.1:9"},"/demo":{"Proxy":"http://127.0.0.1:${FIXTURE_PORT}"},"/unknown":{"Proxy":"http://127.0.0.1:9"},"/current":{"Proxy":"http://127.0.0.1:9"},"/race":{"Proxy":"http://127.0.0.1:9"},"/credential":{"Proxy":"http://127.0.0.1:9"},"/short":{"Proxy":"http://127.0.0.1"},"/inferred":{"Proxy":"http://127.0.0.1:8080"},"/ambiguous":{"Proxy":"http://127.0.0.1:8081"},"/foo/bar":{"Proxy":"http://127.0.0.1:9"},"/foo-bar":{"Proxy":"http://127.0.0.1:9"},"/downloads/example.apk":{"Proxy":"http://127.0.0.1:${FIXTURE_PORT}"}}},"qa.tailnet.example:9443":{"Handlers":{"/":{"Proxy":"http://127.0.0.1:${FIXTURE_PORT}"}}},"qa.tailnet.example:9444":{"Handlers":{"/":{"Proxy":"http://127.0.0.1:9"}}}}}
 JSON
 SH
 chmod +x "$TMP/bin/tailscale"
@@ -228,7 +228,7 @@ else: raise SystemExit('server did not become ready')
 with urllib.request.urlopen(base+'/apps/api/status',timeout=20) as r:
     status=json.load(r)
 assert status['ok'] is True
-assert len(status['apps'])==11, status['apps']
+assert len(status['apps'])==14, status['apps']
 demo=next(a for a in status['apps'] if a['path']=='/demo')
 unknown=next(a for a in status['apps'] if a['path']=='/unknown')
 current=next(a for a in status['apps'] if a['path']=='/current')
@@ -237,14 +237,23 @@ credential=next(a for a in status['apps'] if a['path']=='/credential')
 short=next(a for a in status['apps'] if a['path']=='/short')
 inferred=next(a for a in status['apps'] if a['path']=='/inferred')
 ambiguous=next(a for a in status['apps'] if a['path']=='/ambiguous')
-self_app=next(a for a in status['apps'] if a['path']=='/apps')
+self_app=next(a for a in status['apps'] if a['path']=='/apps' and a['service']=='custom-manager.service')
+shadow_apps=next(a for a in status['apps'] if a['path']=='/apps' and a['service'] is None)
+port_root_a=next(a for a in status['apps'] if a['publicUrl']=='https://qa.tailnet.example:9443/')
+port_root_b=next(a for a in status['apps'] if a['publicUrl']=='https://qa.tailnet.example:9444/')
 nested=next(a for a in status['apps'] if a['path']=='/foo/bar')
 flat=next(a for a in status['apps'] if a['path']=='/foo-bar')
 assert nested['id']==flat['id']=='foo-bar'
 assert nested['actionKey'] != flat['actionKey']
 assert demo['name']=='Manifest Demo App'
+assert port_root_a['name']=='Port Root A' and port_root_b['name']=='Port Root B'
+assert port_root_a['id']=='port-root-a' and port_root_b['id']=='port-root-b'
+assert port_root_a['actionKey'] != port_root_b['actionKey']
+assert port_root_a['canRestart'] is False and port_root_b['canRestart'] is False
 assert demo['release']['source']=='catalog' and demo['release']['sourceHost']=='smoke-catalog'
 assert demo['publicUrl']=='https://qa.tailnet.example/demo/'
+assert self_app['publicUrl']=='https://qa.tailnet.example:8443/apps/'
+assert status['serve']['host']=='qa.tailnet.example:8443'
 assert status['serve']['baseUrl']=='https://qa.tailnet.example:8443'
 assert demo['icon']=='/demo/icon.svg'
 assert demo['git']['dirty'] is True
@@ -263,6 +272,8 @@ assert short['service'] is None and short['canRestart'] is False, (short,ambiguo
 assert inferred['service']=='demo8080.service' and inferred['canRestart'] is False
 assert ambiguous['service'] is None and ambiguous['canRestart'] is False
 assert self_app['service']=='custom-manager.service'
+assert self_app['canRestart'] is True and shadow_apps['canRestart'] is False
+assert self_app['actionKey'] != shadow_apps['actionKey']
 assert status['updates']['updateableCount']==1
 assert '/downloads/example.apk' not in {app['path'] for app in status['apps']}
 assert 'socket' not in status['serve'] and 'paths' not in status['serve']
