@@ -1171,9 +1171,17 @@ async function discoverServedApps(releaseCatalog) {
       repoPath = await findRepoByRemote(releaseInfo.repo) || repoPath;
     }
     const trailingSlash = hint.trailingSlash ?? manifestPrefersTrailingSlash(appManifest);
-    const launchBase = PUBLIC_ORIGIN && PUBLIC_PATHS.has(publicPath)
+    // Per-route origins let a migration pilot preserve unmigrated launches.
+    const routeOrigin = LOCAL_CONFIG.publicOrigins?.[publicPath];
+    if (routeOrigin) {
+      const parsed = new URL(routeOrigin);
+      if (parsed.protocol !== 'https:' || parsed.origin !== routeOrigin || parsed.username || parsed.password) {
+        throw new Error(`Invalid public origin for ${publicPath}`);
+      }
+    }
+    const launchBase = routeOrigin || (PUBLIC_ORIGIN && PUBLIC_PATHS.has(publicPath)
       ? PUBLIC_ORIGIN
-      : `https://${host}`;
+      : `https://${host}`);
 
     apps.push({
       id,
