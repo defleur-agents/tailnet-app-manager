@@ -1,10 +1,11 @@
 {
-  "name": "Tailnet Apps Manager",
-  "short_name": "Tailnet Apps",
+  "name": "Wizard Apps Manager",
+  "short_name": "Wizard Apps",
   "id": "/apps/",
   "start_url": "/apps/",
   "scope": "/apps/",
   "display": "standalone",
+  "prefer_related_applications": false,
   "capture_links": "none",
   "background_color": "#0B0B0D",
   "theme_color": "#0B0B0D",

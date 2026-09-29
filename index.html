@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#090C12" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-title" content="Apps Manager" />
-  <link rel="manifest" href="/apps/manifest.webmanifest" />
+  <meta name="apple-mobile-web-app-title" content="Wizard Apps" />
+  <link rel="manifest" href="/apps/manifest.webmanifest" crossorigin="use-credentials" />
   <link rel="icon" type="image/png" sizes="192x192" href="/apps/icon-192.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="/apps/apple-touch-icon.png" />
-  <title>Apps Manager</title>
+  <title>Wizard Apps Manager</title>
   <style>
     :root {
       --bg:#090c12;
@@ -77,6 +77,17 @@
     .update-copy strong { color:#ffb545; font-weight:900; }
     .update-copy span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .update-banner .btn { min-height:64px; min-width:194px; border-radius:22px; font-size:1.08rem; }
+
+    .install-banner {
+      display:flex; align-items:center; justify-content:space-between; gap:18px; margin:0 0 28px;
+      padding:18px 22px; border:1px solid rgba(0,212,122,.28); background:rgba(0,212,122,.065);
+      border-radius:24px; color:#e8edf7; box-shadow:0 0 0 1px rgba(0,0,0,.1) inset;
+    }
+    .install-banner[hidden] { display:none; }
+    .install-copy { display:grid; gap:4px; min-width:0; }
+    .install-copy strong { color:#ecfff6; font-size:1.08rem; }
+    .install-copy span { color:#9aabac; line-height:1.35; }
+    .install-banner .btn { flex:0 0 auto; min-width:142px; }
 
     .action-feedback {
       display:flex; align-items:center; gap:14px; margin:0 0 28px; padding:16px 20px; border:1px solid var(--line);
@@ -336,6 +347,10 @@
       .update-copy { gap:9px; }
       .update-dot { width:8px; height:8px; box-shadow:0 0 0 5px rgba(245,162,26,.08); }
       .update-banner .btn { min-height:38px; min-width:112px; padding:8px 12px; border-radius:12px; font-size:.84rem; }
+      .install-banner { align-items:stretch; flex-direction:column; gap:12px; margin-bottom:16px; padding:14px; border-radius:18px; }
+      .install-copy strong { font-size:.96rem; }
+      .install-copy span { font-size:.82rem; }
+      .install-banner .btn { width:100%; min-height:46px; }
       .action-feedback { margin-bottom:16px; padding:11px 13px; border-radius:14px; font-size:.82rem; }
 
       .toolbar { margin-bottom:16px; gap:10px; }
@@ -408,8 +423,8 @@
   <div class="wrap">
     <header class="top">
       <div class="brand">
-        <img src="/apps/apple-touch-icon.png" alt="Tailnet Apps" />
-        <h1>Tailnet Apps</h1>
+        <img src="/apps/apple-touch-icon.png" alt="Wizard Apps" />
+        <h1>Wizard Apps</h1>
       </div>
       <div class="sync-block">
         <div class="synced" id="updatedAt">syncing</div>
@@ -417,6 +432,13 @@
       </div>
     </header>
 
+    <div id="installBanner" class="install-banner" hidden>
+      <div class="install-copy">
+        <strong>Install Wizard Apps</strong>
+        <span>Open it from your home screen as a standalone app.</span>
+      </div>
+      <button id="installBtn" class="btn primary" type="button">Install app</button>
+    </div>
     <div id="updateBanner" class="update-banner" hidden></div>
     <div id="actionFeedback" class="action-feedback" role="status" aria-live="polite" aria-atomic="true" hidden></div>
 
@@ -429,7 +451,7 @@
     </div>
 
     <main class="main-shell">
-      <section id="appsSurface" class="apps-surface list" aria-label="Tailnet apps"></section>
+      <section id="appsSurface" class="apps-surface list" aria-label="Wizard apps"></section>
       <div id="detailBackdrop" class="detail-backdrop" onclick="closeDetail()"></div>
       <aside id="detailPanel" class="detail-panel" data-empty="true" aria-label="App details"></aside>
     </main>
@@ -449,6 +471,40 @@
     const summaryEl = document.getElementById('summary');
     const listViewBtn = document.getElementById('listViewBtn');
     const tileViewBtn = document.getElementById('tileViewBtn');
+    const installBanner = document.getElementById('installBanner');
+    const installBtn = document.getElementById('installBtn');
+    let deferredInstallPrompt = null;
+
+    window.addEventListener('beforeinstallprompt', event => {
+      event.preventDefault();
+      deferredInstallPrompt = event;
+      installBanner.hidden = false;
+    });
+
+    window.addEventListener('appinstalled', () => {
+      deferredInstallPrompt = null;
+      installBanner.hidden = true;
+    });
+
+    installBtn.addEventListener('click', async () => {
+      if (!deferredInstallPrompt) return;
+      installBtn.disabled = true;
+      try {
+        await deferredInstallPrompt.prompt();
+        await deferredInstallPrompt.userChoice;
+      } finally {
+        deferredInstallPrompt = null;
+        installBanner.hidden = true;
+        installBtn.disabled = false;
+      }
+    });
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/apps/service-worker.js', { scope: '/apps/' })
+          .catch(error => console.error('PWA service worker registration failed', error));
+      });
+    }
 
     const state = {
       apps: [],
@@ -462,7 +518,7 @@
       actionFeedback: null,
     };
 
-    const STATUS_CACHE_KEY = 'appsManagerStatusCache:v2';
+    const STATUS_CACHE_KEY = 'appsManagerStatusCache:v3';
     const SYNC_TIME_FORMAT = { hour:'numeric', minute:'2-digit' };
 
     function esc(s) {

@@ -7,6 +7,8 @@ import { execFile, spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 
+import { preferredManifestIconSource } from './app-icon-selection.mjs';
+
 const execFileAsync = promisify(execFile);
 const HOST = process.env.APPS_HOST || '127.0.0.1';
 const PORT = Number(process.env.APPS_PORT || 8786);
@@ -15,9 +17,14 @@ const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const INDEX_PATH = path.join(ROOT, 'index.html');
 const HOME = process.env.HOME || os.homedir();
 const TAILNET_BASE_ENV = process.env.TAILNET_BASE_URL || null;
+const PUBLIC_ORIGIN_ENV = process.env.APPS_PUBLIC_ORIGIN || null;
+const ALLOW_SHARED_CONTROL_ORIGIN = String(process.env.APPS_ALLOW_SHARED_CONTROL_ORIGIN || '').toLowerCase() === '1';
+const READ_ONLY = ['1', 'true', 'yes'].includes(String(process.env.APPS_READ_ONLY || '').toLowerCase());
 const GIT_CACHE_TTL_MS = Number(process.env.APPS_GIT_CACHE_MS || 180000);
 const RELEASES_URL = process.env.APPS_RELEASES_URL || 'https://humanitylabs.org/releases/apps.json';
 const RELEASES_CACHE_TTL_MS = Number(process.env.APPS_RELEASES_CACHE_MS || 600000);
+const STATUS_CACHE_TTL_MS = Math.max(1000, Number(process.env.APPS_STATUS_CACHE_MS || 10000));
+const STATUS_APP_CONCURRENCY = Math.max(1, Math.min(8, Number(process.env.APPS_STATUS_CONCURRENCY || 4)));
 const MANIFEST_MAX_BYTES = Number(process.env.APPS_MANIFEST_MAX_BYTES || 262144);
 const RELEASES_MAX_BYTES = Number(process.env.APPS_RELEASES_MAX_BYTES || 1048576);
 const INCLUDE_ROOT_APP = String(process.env.APPS_INCLUDE_ROOT || '').toLowerCase() === '1';
@@ -92,6 +99,11 @@ const DEVELOPMENT_SERVE_PATHS = new Set(
   (Array.isArray(LOCAL_CONFIG.developmentPaths) ? LOCAL_CONFIG.developmentPaths : [])
     .map(normalizeRoutePath),
 );
+const PRODUCTION_SERVE_PATHS = new Set(
+  (Array.isArray(LOCAL_CONFIG.productionPaths) ? LOCAL_CONFIG.productionPaths : [])
+    .map(normalizeRoutePath),
+);
+const DEFAULT_APP_GROUP = LOCAL_CONFIG.defaultGroup === 'installed' ? 'installed' : 'development';
 
 function servePathHidden(publicPath) {
   return HIDDEN_SERVE_PATHS.has(publicPath)
@@ -100,19 +112,20 @@ function servePathHidden(publicPath) {
 
 function appGroupForPath(publicPath) {
   if (DEVELOPMENT_SERVE_PATHS.has(publicPath)) return 'development';
-  return 'installed';
+  if (PRODUCTION_SERVE_PATHS.has(publicPath)) return 'installed';
+  return DEFAULT_APP_GROUP;
 }
 
 const GROUPS = {
   installed: {
     id: 'installed',
     label: 'Apps',
-    description: 'Installed apps exposed through Tailscale Serve.',
+    description: 'Finished Wizard apps in active use.',
   },
   development: {
     id: 'development',
     label: 'In Development',
-    description: 'Apps marked as development in local configuration.',
+    description: 'Unpromoted builds, previews, prototypes, and one-off dashboards.',
   },
   ...(LOCAL_CONFIG.groups && typeof LOCAL_CONFIG.groups === 'object' ? LOCAL_CONFIG.groups : {}),
 };
@@ -132,7 +145,7 @@ if (configuredSelfHint.repoPath && path.resolve(configuredSelfHint.repoPath) !==
 APP_HINTS[BASE] = {
   ...configuredSelfHint,
   id: 'appsmanager',
-  name: 'Apps Manager',
+  name: 'Wizard Apps Manager',
   service: SELF_SERVICE,
   repoPath: ROOT,
   healthUrl: `http://${HOST}:${PORT}${BASE}/api/health`,
@@ -141,6 +154,7 @@ APP_HINTS[BASE] = {
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
   '.webmanifest': 'application/manifest+json; charset=utf-8',
   '.png': 'image/png',
@@ -148,6 +162,7 @@ const MIME = {
 
 const STATIC_ROUTES = {
   [`${BASE}/manifest.webmanifest`]: path.join(ROOT, 'manifest.webmanifest'),
+  [`${BASE}/service-worker.js`]: path.join(ROOT, 'service-worker.js'),
   [`${BASE}/icon-192.png`]: path.join(ROOT, 'icon-192.png'),
   [`${BASE}/icon-512.png`]: path.join(ROOT, 'icon-512.png'),
   [`${BASE}/apple-touch-icon.png`]: path.join(ROOT, 'apple-touch-icon.png'),
@@ -193,7 +208,7 @@ function configuredTailnetOrigin() {
   ) {
     throw new Error('TAILNET_BASE_URL must be a credential-free, origin-only HTTPS URL.');
   }
-  if (!url.port || url.port === '443') {
+  if ((!url.port || url.port === '443') && !ALLOW_SHARED_CONTROL_ORIGIN) {
     throw new Error('TAILNET_BASE_URL must use a dedicated nondefault HTTPS port so sibling Tailnet apps do not share the control origin.');
   }
   return url.origin;
@@ -201,12 +216,51 @@ function configuredTailnetOrigin() {
 
 const TAILNET_ORIGIN = configuredTailnetOrigin();
 
+function configuredPublicOrigin() {
+  if (!PUBLIC_ORIGIN_ENV) return null;
+  let url;
+  try {
+    url = new URL(PUBLIC_ORIGIN_ENV);
+  } catch {
+    throw new Error('APPS_PUBLIC_ORIGIN must be a valid HTTPS URL.');
+  }
+  if (
+    url.protocol !== 'https:'
+    || url.username
+    || url.password
+    || url.origin === 'null'
+    || url.pathname !== '/'
+    || url.search
+    || url.hash
+  ) {
+    throw new Error('APPS_PUBLIC_ORIGIN must be a credential-free, origin-only HTTPS URL.');
+  }
+  return url.origin;
+}
+
+const PUBLIC_ORIGIN = configuredPublicOrigin();
+const CONTROL_ORIGIN = PUBLIC_ORIGIN || TAILNET_ORIGIN;
+const PUBLIC_PATHS = new Set(
+  String(process.env.APPS_PUBLIC_PATHS || BASE)
+    .split(',')
+    .map(value => normalizeRoutePath(value))
+    .filter(Boolean),
+);
+const ROUTE_ALLOWLIST = new Set(
+  String(process.env.APPS_ROUTE_ALLOWLIST || '')
+    .split(',')
+    .map(value => value.trim())
+    .filter(Boolean)
+    .map(value => normalizeRoutePath(value)),
+);
+
 function allowedUnsafeOrigins() {
   const origins = new Set([
     `http://127.0.0.1:${PORT}`,
     `http://localhost:${PORT}`,
   ]);
   if (TAILNET_ORIGIN) origins.add(TAILNET_ORIGIN);
+  if (PUBLIC_ORIGIN) origins.add(PUBLIC_ORIGIN);
   return origins;
 }
 
@@ -235,12 +289,15 @@ function unsafeOriginAllowed(req) {
 }
 
 function controlShellRedirect(req, pathname, search = '') {
-  if (!TAILNET_ORIGIN || (req.method || 'GET').toUpperCase() !== 'GET') return null;
+  if (!CONTROL_ORIGIN || (req.method || 'GET').toUpperCase() !== 'GET') return null;
   if (pathname !== '/' && pathname !== BASE && pathname !== `${BASE}/`) return null;
   try {
-    const control = new URL(TAILNET_ORIGIN);
+    const control = new URL(CONTROL_ORIGIN);
     const requested = new URL(`https://${req.headers.host || ''}`);
-    if (requested.hostname !== control.hostname || requested.origin === control.origin) return null;
+    if (requested.hostname !== control.hostname) return null;
+    if (requested.origin === control.origin) {
+      return pathname === '/' ? `${control.origin}${BASE}/${search}` : null;
+    }
     const targetPath = pathname === '/' ? `${BASE}/` : pathname;
     return `${control.origin}${targetPath}${search}`;
   } catch {
@@ -466,17 +523,13 @@ function manifestPrefersTrailingSlash(manifest) {
 
 function manifestIconPath(manifest, publicPath) {
   const icons = Array.isArray(manifest?.icons) ? manifest.icons : [];
-  const scored = icons
-    .filter(icon => icon && typeof icon === 'object' && icon.src)
-    .map(icon => {
-      const sizes = String(icon.sizes || '');
-      const maxSize = Math.max(0, ...sizes.split(/\s+/).map(s => Number((s.match(/\d+/) || [0])[0])));
-      const svgBonus = String(icon.type || '').includes('svg') || String(icon.src || '').endsWith('.svg') ? 10000 : 0;
-      return { src: absolutePublicPath(icon.src, publicPath), score: svgBonus + maxSize };
-    })
-    .filter(icon => icon.src)
-    .sort((a, b) => b.score - a.score);
-  return scored[0]?.src || null;
+  const safeManifest = {
+    ...manifest,
+    icons: icons
+      .map(icon => ({ ...icon, src: absolutePublicPath(icon?.src, publicPath) }))
+      .filter(icon => icon.src),
+  };
+  return preferredManifestIconSource(safeManifest);
 }
 
 function sameProxyTarget(a, b) {
@@ -1022,7 +1075,7 @@ async function discoverServedApps(releaseCatalog) {
         socket: serve.socket || null,
         error: serve.err || serve.out || 'tailscale serve status failed',
         host: hostFromTailnetBase(),
-        baseUrl: TAILNET_ORIGIN,
+        baseUrl: CONTROL_ORIGIN,
         paths: [],
       },
     };
@@ -1065,6 +1118,7 @@ async function discoverServedApps(releaseCatalog) {
       const publicPath = selfProxy ? BASE : servedPath;
       const exactHint = APP_HINTS[routeIdentity(host, publicPath)] || null;
       if (servedPath === '/' && !selfProxy && !INCLUDE_ROOT_APP && !exactHint) continue;
+      if (ROUTE_ALLOWLIST.size && !ROUTE_ALLOWLIST.has(publicPath)) continue;
       if (servePathHidden(publicPath)) continue;
 
       routeEntries.push({
@@ -1117,7 +1171,9 @@ async function discoverServedApps(releaseCatalog) {
       repoPath = await findRepoByRemote(releaseInfo.repo) || repoPath;
     }
     const trailingSlash = hint.trailingSlash ?? manifestPrefersTrailingSlash(appManifest);
-    const launchBase = `https://${host}`;
+    const launchBase = PUBLIC_ORIGIN && PUBLIC_PATHS.has(publicPath)
+      ? PUBLIC_ORIGIN
+      : `https://${host}`;
 
     apps.push({
       id,
@@ -1159,7 +1215,7 @@ async function discoverServedApps(releaseCatalog) {
       socket: serve.socket || null,
       error: null,
       host: preferredHost || hosts[0] || null,
-      baseUrl: TAILNET_ORIGIN,
+      baseUrl: CONTROL_ORIGIN,
       paths: routeEntries.map(entry => routeIdentity(entry.host, entry.servedPath)),
       listedPaths: apps.map(app => app.publicUrl),
       rootIncluded: INCLUDE_ROOT_APP,
@@ -1232,10 +1288,32 @@ function appCanUpdateNow(app) {
   return Boolean(app.canUpdate && g.autoUpdateAvailable && g.tracked && g.canCheck && g.cleanKnown && !g.dirty && !g.diverged && Number(g.ahead || 0) === 0);
 }
 
-async function getStatus({ forceGit = false } = {}) {
+async function mapWithConcurrency(items, concurrency, worker) {
+  const results = new Array(items.length);
+  let nextIndex = 0;
+
+  async function run() {
+    while (nextIndex < items.length) {
+      const index = nextIndex++;
+      results[index] = await worker(items[index], index);
+    }
+  }
+
+  await Promise.all(Array.from(
+    { length: Math.min(concurrency, items.length) },
+    () => run(),
+  ));
+  return results;
+}
+
+async function buildStatus({ forceGit = false } = {}) {
   const releaseCatalog = await fetchReleaseCatalog({ force: forceGit });
   const discovered = await discoverServedApps(releaseCatalog);
-  const apps = await Promise.all(discovered.apps.map(app => appStatus(app, { forceGit, releaseCatalog })));
+  const apps = await mapWithConcurrency(
+    discovered.apps,
+    STATUS_APP_CONCURRENCY,
+    app => appStatus(app, { forceGit, releaseCatalog }),
+  );
   const updateableApps = apps.filter(appCanUpdateNow);
   const updateAvailableApps = apps.filter(app => app.git?.updateAvailable || app.release?.outdated);
 
@@ -1257,6 +1335,29 @@ async function getStatus({ forceGit = false } = {}) {
       updateableIds: updateableApps.map(app => app.id),
     },
   };
+}
+
+let statusCache = null;
+let statusCacheAt = 0;
+let statusInFlight = null;
+
+async function getStatus({ forceGit = false } = {}) {
+  const cacheAge = Date.now() - statusCacheAt;
+  if (statusCache && cacheAge < STATUS_CACHE_TTL_MS && (!forceGit || cacheAge < 3000)) {
+    return statusCache;
+  }
+  if (statusInFlight) return statusInFlight;
+
+  const request = buildStatus({ forceGit });
+  statusInFlight = request;
+  try {
+    const status = await request;
+    statusCache = status;
+    statusCacheAt = Date.now();
+    return status;
+  } finally {
+    if (statusInFlight === request) statusInFlight = null;
+  }
 }
 
 function publicSourceLabel(value) {
@@ -1297,7 +1398,16 @@ function publicAppStatus(app) {
 function publicStatus(status) {
   return {
     ok: true,
-    apps: status.apps.map(publicAppStatus),
+    readOnly: READ_ONLY,
+    apps: status.apps.map(app => {
+      const safe = publicAppStatus(app);
+      return READ_ONLY ? {
+        ...safe,
+        canRestart: false,
+        canUpdate: false,
+        canToggleAutostart: false,
+      } : safe;
+    }),
     groups: status.groups,
     releases: {
       source: publicSourceLabel(status.releases?.source),
@@ -1314,7 +1424,7 @@ function publicStatus(status) {
     },
     updates: {
       availableCount: status.updates?.availableCount || 0,
-      updateableCount: status.updates?.updateableCount || 0,
+      updateableCount: READ_ONLY ? 0 : (status.updates?.updateableCount || 0),
     },
   };
 }
@@ -1513,7 +1623,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (pathname === `${BASE}/api/health`) {
-      return send(res, 200, JSON.stringify({ ok: true, app: 'tailnet-app-manager' }), { 'Content-Type': MIME['.json'] });
+      return send(res, 200, JSON.stringify({ ok: true, app: 'wizard-apps-manager' }), { 'Content-Type': MIME['.json'] });
     }
 
     if (pathname === `${BASE}/api/status`) {
@@ -1524,6 +1634,7 @@ const server = http.createServer(async (req, res) => {
 
     if (pathname === `${BASE}/api/action`) {
       if (method !== 'POST') return send(res, 405, JSON.stringify({ error: 'Method Not Allowed' }), { 'Content-Type': MIME['.json'] });
+      if (READ_ONLY) return send(res, 403, JSON.stringify({ error: 'read-only deployment' }), { 'Content-Type': MIME['.json'] });
       if (!unsafeOriginAllowed(req)) return send(res, 403, JSON.stringify({ error: 'forbidden origin' }), { 'Content-Type': MIME['.json'] });
       let body = '';
       for await (const chunk of req) {
