@@ -655,8 +655,8 @@
     }
 
     function appIconRoot(app) {
-      const launchUrl = launchUrlFor(app);
-      if (launchUrl) return launchUrl;
+      // A migration pilot may retain external launch URLs. Fetch catalog
+      // artwork from this private origin, independently of launch routing.
       const rawPath = String(app.path || '/').trim() || '/';
       const normalized = `/${rawPath.replace(/^\/+/, '').replace(/\/+$/, '')}`;
       return new URL(`${normalized === '/' ? '' : normalized}/`, window.location.origin).href;
