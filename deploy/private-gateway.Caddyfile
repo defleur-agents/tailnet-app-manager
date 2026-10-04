@@ -20,6 +20,25 @@ https://private.wizard001.com:19445 {
         dns cloudflare {env.CF_API_TOKEN}
         resolvers 1.1.1.1 8.8.8.8
     }
+    @nativeUpgradeBare path /native-upgrades
+    redir @nativeUpgradeBare /native-upgrades/ 308
+    @nativeUpgrades path /native-upgrades/ /native-upgrades/index.html /native-upgrades/mizel-0.1.19.apk /native-upgrades/wizard-music-0.3.1.apk
+    handle @nativeUpgrades {
+        @nativeUnsafe not method GET HEAD
+        respond @nativeUnsafe "Method not allowed" 405
+        header {
+            Cache-Control "no-store"
+            X-Robots-Tag "noindex, nofollow"
+            X-Content-Type-Options "nosniff"
+            Referrer-Policy "no-referrer"
+            Content-Security-Policy "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+        }
+        @apk path *.apk
+        header @apk Content-Type application/vnd.android.package-archive
+        uri strip_prefix /native-upgrades
+        root * /home/telos/.hermes/state/private-app-migration/native-upgrades
+        file_server
+    }
     @cavi path /cavi-intelligence /cavi-intelligence/*
     handle @cavi {
         route {
