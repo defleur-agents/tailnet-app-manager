@@ -1,0 +1,12 @@
+[Unit]
+Description=Private gateway verified Tailscale principal bridge
+After=tailscale-private-gateway.service
+[Service]
+Type=simple
+ExecStart=/home/telos/.local/bin/node /home/telos/worktrees/private-portfolio/private-tailnet-auth.mjs
+Restart=on-failure
+RestartSec=2
+UMask=0077
+NoNewPrivileges=true
+[Install]
+WantedBy=default.target

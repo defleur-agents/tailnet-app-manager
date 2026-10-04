@@ -1,0 +1,179 @@
+{
+    admin off
+    auto_https disable_redirects
+    acme_ca https://acme-v02.api.letsencrypt.org/directory
+    servers {
+        protocols h1 h2
+        listener_wrappers {
+            proxy_protocol {
+                timeout 2s
+                allow 127.0.0.1/32
+                fallback_policy reject
+            }
+            tls
+        }
+    }
+}
+https://private.wizard001.com:19445 {
+    bind 127.0.0.1
+    tls {
+        dns cloudflare {env.CF_API_TOKEN}
+        resolvers 1.1.1.1 8.8.8.8
+    }
+    @cavi path /cavi-intelligence /cavi-intelligence/*
+    handle @cavi {
+        route {
+            request_header -Tailscale-User-Login
+            request_header -Tailscale-User-Name
+            request_header -X-Private-Peer
+            forward_auth 127.0.0.1:19447 {
+                uri /verify
+                header_up X-Private-Peer {http.request.remote.host}
+                copy_headers Tailscale-User-Login
+            }
+            reverse_proxy 127.0.0.1:8851
+        }
+    }
+    @wizardSignalBare path /wizard-signal
+    redir @wizardSignalBare /wizard-signal/ 308
+    handle /wizard-signal/* {
+        reverse_proxy 127.0.0.1:9196
+    }
+    @entry path / /apps
+    redir @entry /apps/ 308
+    handle /apps/* {
+        reverse_proxy 127.0.0.1:9190
+    }
+    @reportBare path /reports/before-your-message
+    redir @reportBare /reports/before-your-message/ 308
+    @report path /reports/before-your-message/ /reports/before-your-message/index.html
+    handle @report {
+        @unsafe not method GET HEAD
+        respond @unsafe "Method not allowed" 405
+        header {
+            Cache-Control "no-store"
+            X-Robots-Tag "noindex, nofollow"
+            X-Content-Type-Options "nosniff"
+            Referrer-Policy "no-referrer"
+            Content-Security-Policy "default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; frame-ancestors 'none'"
+        }
+        root * /home/telos/.hermes/data/apps/private-reports/before-your-message
+        rewrite * /index.html
+        file_server
+    }
+    @clipsPacketBare path /reports/clips-posting-packet
+    redir @clipsPacketBare /reports/clips-posting-packet/ 308
+    @clipsPacket path /reports/clips-posting-packet/ /reports/clips-posting-packet/index.html /reports/clips-posting-packet/video.mp4 /reports/clips-posting-packet/cover.jpg
+    handle @clipsPacket {
+        @clipsPacketUnsafe not method GET HEAD
+        respond @clipsPacketUnsafe "Method not allowed" 405
+        header {
+            Cache-Control "no-store"
+            X-Robots-Tag "noindex, nofollow"
+            X-Content-Type-Options "nosniff"
+            Referrer-Policy "no-referrer"
+            Content-Security-Policy "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self'; media-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+        }
+        uri strip_prefix /reports/clips-posting-packet
+        root * /home/telos/.hermes/data/apps/private-reports/clips-posting-packet
+        file_server
+    }
+    @tukBoardBare path /reports/wizard-tuk-tuk-storyboard
+    redir @tukBoardBare /reports/wizard-tuk-tuk-storyboard/ 308
+    @tukBoard path /reports/wizard-tuk-tuk-storyboard/ /reports/wizard-tuk-tuk-storyboard/index.html
+    handle @tukBoard {
+        @tukBoardUnsafe not method GET HEAD
+        respond @tukBoardUnsafe "Method not allowed" 405
+        header {
+            Cache-Control "no-store"
+            X-Robots-Tag "noindex, nofollow"
+            X-Content-Type-Options "nosniff"
+            Referrer-Policy "no-referrer"
+            Content-Security-Policy "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+        }
+        root * /home/telos/.hermes/data/apps/private-reports/wizard-tuk-tuk-storyboard
+        rewrite * /index.html
+        file_server
+    }
+    @fdeMineBare path /reports/fde-process-mining
+    redir @fdeMineBare /reports/fde-process-mining/ 308
+    @fdeMine path /reports/fde-process-mining/ /reports/fde-process-mining/index.html
+    handle @fdeMine {
+        @fdeMineUnsafe not method GET HEAD
+        respond @fdeMineUnsafe "Method not allowed" 405
+        header {
+            Cache-Control "no-store"
+            X-Robots-Tag "noindex, nofollow"
+            X-Content-Type-Options "nosniff"
+            Referrer-Policy "no-referrer"
+            Content-Security-Policy "default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+        }
+        root * /home/telos/.hermes/data/apps/private-reports/fde-process-mining
+        rewrite * /index.html
+        file_server
+    }
+    @wizardDomainsBare path /reports/wizard-domains
+    redir @wizardDomainsBare /reports/wizard-domains/ 308
+    @wizardDomains path /reports/wizard-domains/ /reports/wizard-domains/index.html /reports/wizard-domains/inventory.csv
+    handle @wizardDomains {
+        @wizardDomainsUnsafe not method GET HEAD
+        respond @wizardDomainsUnsafe "Method not allowed" 405
+        header {
+            Cache-Control "no-store"
+            X-Robots-Tag "noindex, nofollow"
+            X-Content-Type-Options "nosniff"
+            Referrer-Policy "no-referrer"
+            Content-Security-Policy "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+        }
+        uri strip_prefix /reports/wizard-domains
+        root * /home/telos/.hermes/data/apps/private-reports/wizard-domains
+        file_server
+    }
+    @octReadingBare path /reports/2026-10-04-conversations
+    redir @octReadingBare /reports/2026-10-04-conversations/ 308
+    @octReading path /reports/2026-10-04-conversations/ /reports/2026-10-04-conversations/index.html /reports/2026-10-04-conversations/reading.md
+    handle @octReading {
+        @octReadingUnsafe not method GET HEAD
+        respond @octReadingUnsafe "Method not allowed" 405
+        header {
+            Cache-Control "no-store"
+            X-Robots-Tag "noindex, nofollow"
+            X-Content-Type-Options "nosniff"
+            Referrer-Policy "no-referrer"
+            Content-Security-Policy "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+        }
+        uri strip_prefix /reports/2026-10-04-conversations
+        root * /home/telos/.hermes/data/apps/private-reports/2026-10-04-conversations
+        file_server
+    }
+    @neonAfterimage path /wizard/attachments/9eb3c95cef21472abe269a01bc95cbe4
+    handle @neonAfterimage {
+        @neonUnsafe not method GET HEAD
+        respond @neonUnsafe "Method not allowed" 405
+        header X-Robots-Tag "noindex, nofollow"
+        reverse_proxy 127.0.0.1:8923 {
+            header_down Content-Disposition "inline; filename=Neon-Afterimage.mp3"
+        }
+    }
+    @wizardCandidates path /wizard/c-c3a307beba/* /wizard/c-b7b78925b8/* /wizard/c-31000c9ad4/* /wizard/c-a901425943/*
+    handle @wizardCandidates {
+        reverse_proxy 127.0.0.1:8996
+    }
+    @wizardCandidateApi {
+        path /wizard/*
+        header_regexp X-Wizard-Preview-Candidate ^c-(c3a307beba|b7b78925b8|31000c9ad4|a901425943)$
+    }
+    handle @wizardCandidateApi {
+        reverse_proxy 127.0.0.1:8996
+    }
+    handle /extensions/e-ink-skin/assets/* {
+        reverse_proxy 127.0.0.1:8899
+    }
+    @personalApps path /mizel /mizel/* /wizard-music-home /wizard-music-home/* /wizard-music-navidrome /wizard-music-navidrome/* /agent-data /agent-data/* /ai-inbox /ai-inbox/* /ai-reel-metrics-vault /ai-reel-metrics-vault/* /alerts /alerts/* /amazon-operator /amazon-operator/* /amazon-operator/reviews /amazon-operator/reviews/* /archimedes-live /archimedes-live/* /archimedes-live/realtime /archimedes-live/realtime/* /asset-sharing-review /asset-sharing-review/* /automation-roadmap /automation-roadmap/* /axm-divine-archive /axm-divine-archive/* /bitcoin-flow-model /bitcoin-flow-model/* /browser-control /browser-control/* /buzz-workspace /buzz-workspace/* /capture /capture/* /cavi-intelligence /cavi-intelligence/* /cinequeue /cinequeue/* /congress-preview /congress-preview/* /console /console/* /console/claude /console/claude/* /console/hermes /console/hermes/* /console/shell /console/shell/* /contexts-preview /contexts-preview/* /daily-crush /daily-crush/* /downloads/archimedes-assistant /downloads/archimedes-assistant/* /exploration-atlas /exploration-atlas/* /files /files/* /golden-frog-review /golden-frog-review/* /helm /helm/* /helm-attention-map /helm-attention-map/* /helm-fable-preview /helm-fable-preview/* /helm-next /helm-next/* /hermes-lease-findings /hermes-lease-findings/* /hermesUI /hermesUI/* /iching /iching/* /idea-queue /idea-queue/* /job-hunter /job-hunter/* /mizel-ux /mizel-ux/* /model-performance /model-performance/* /morning-previews /morning-previews/* /nesquena /nesquena/* /phase-loom /phase-loom/* /reader /reader/* /reading-playground /reading-playground/* /recall /recall/* /relationship-ledger /relationship-ledger/* /relationship-manager-c /relationship-manager-c/* /sanctuary /sanctuary/* /shopping-assistant /shopping-assistant/* /signal-feed /signal-feed/* /storyboard-review /storyboard-review/* /thai-cram /thai-cram/* /thailand-opportunity-radar /thailand-opportunity-radar/* /threadline /threadline/* /trackhunt /trackhunt/* /webtoon-mode-preview /webtoon-mode-preview/* /wizard /wizard/* /wizard-apps-preview /wizard-apps-preview/* /wizard-desktop /wizard-desktop/* /wizard-os-business-lab /wizard-os-business-lab/* /wizard-os-concept /wizard-os-concept/* /wizard-os-knowledge-v2 /wizard-os-knowledge-v2/* /wizard-os-three-tab /wizard-os-three-tab/* /wizard-quest-preview /wizard-quest-preview/* /wizard-social /wizard-social/* /wizard-social-discovery /wizard-social-discovery/* /wizard-working-status /wizard-working-status/* /wizard001 /wizard001/* /x-signal-lab /x-signal-lab/* /xero /xero/* /youtube-ideas /youtube-ideas/* /youtube-transcript /youtube-transcript/*
+    handle @personalApps {
+        reverse_proxy 127.0.0.1:9191
+    }
+    handle {
+        respond "Private route not found." 404
+    }
+}

@@ -229,7 +229,7 @@
       "override": "Private Auragin read-only Xero OAuth connector"
     },
     "/mizel": {
-      "target": "http://127.0.0.1:8788"
+      "target": "http://127.0.0.1:8790"
     },
     "/wizard-music-home": {
       "target": "http://127.0.0.1:8991"

@@ -67,6 +67,12 @@ function ingressAllowed(request, websocket = false) {
 }
 function outgoingHeaders(request, route, target, websocket = false) {
   const headers = { ...request.headers };
+  // Custom-domain TCP ingress authenticates the network, not caller-supplied
+  // Cloudflare or Serve identity headers. Never forward those assertions.
+  for (const name of Object.keys(headers)) {
+    if (name.startsWith('cf-access-') || name.startsWith('tailscale-user-') ||
+        name === 'x-private-peer' || name === 'cf-connecting-ip') delete headers[name];
+  }
   // Validate browser Origin at ingress, then bridge the legacy app allowlist.
   // Signed-URL applications keep their canonical private Origin untouched.
   if (headers.origin === PUBLIC_ORIGIN && route.path !== '/wizard-social') {
@@ -79,7 +85,6 @@ function outgoingHeaders(request, route, target, websocket = false) {
   headers["x-forwarded-host"] = new URL(backendOrigin).host;
   headers["x-forwarded-proto"] = "https";
   headers["x-forwarded-prefix"] = route.path;
-  if (request.headers["cf-connecting-ip"]) headers["x-forwarded-for"] = request.headers["cf-connecting-ip"];
   if (!websocket) {
     delete headers.connection;
     delete headers.upgrade;
