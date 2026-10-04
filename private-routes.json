@@ -1,0 +1,241 @@
+{
+  "version": 1,
+  "source": "Explicit personal-app migration; existing origins retained for rollback",
+  "routes": {
+    "/asset-sharing-review": {
+      "target": "http://127.0.0.1:9173/asset-sharing-review",
+      "override": "Private asset-sharing workflow browser review; read-only"
+    },
+    "/wizard-social-discovery": {
+      "target": "http://127.0.0.1:9165",
+      "override": "Private isolated Social discovery preview; no relay or live writes"
+    },
+    "/x-signal-lab": {
+      "target": "http://127.0.0.1:9111",
+      "override": "Private bounded X topic-search and Jev comparison MVP"
+    },
+    "/storyboard-review": {
+      "target": "http://127.0.0.1:8993/storyboard-review",
+      "override": "Private personal storyboard review"
+    },
+    "/agent-data": {
+      "target": "http://127.0.0.1:8896/agent-data"
+    },
+    "/ai-inbox": {
+      "target": "http://127.0.0.1:8843/ai-inbox"
+    },
+    "/ai-reel-metrics-vault": {
+      "target": "http://127.0.0.1:8870"
+    },
+    "/alerts": {
+      "target": "http://127.0.0.1:8804"
+    },
+    "/amazon-operator": {
+      "target": "http://127.0.0.1:8876"
+    },
+    "/amazon-operator/reviews": {
+      "target": "http://127.0.0.1:8961/amazon-operator/reviews",
+      "override": "Cloudflare-safe route"
+    },
+    "/archimedes-live": {
+      "target": "http://127.0.0.1:8902"
+    },
+    "/archimedes-live/realtime": {
+      "target": "http://127.0.0.1:8903"
+    },
+    "/automation-roadmap": {
+      "target": "http://127.0.0.1:8846"
+    },
+    "/axm-divine-archive": {
+      "target": "http://127.0.0.1:8937"
+    },
+    "/bitcoin-flow-model": {
+      "target": "http://127.0.0.1:8787"
+    },
+    "/browser-control": {
+      "target": "http://127.0.0.1:6081"
+    },
+    "/buzz-workspace": {
+      "target": "http://127.0.0.1:8835"
+    },
+    "/capture": {
+      "target": "http://127.0.0.1:8827"
+    },
+    "/cavi-intelligence": {
+      "target": "http://127.0.0.1:8851"
+    },
+    "/cinequeue": {
+      "target": "http://127.0.0.1:8766"
+    },
+    "/congress-preview": {
+      "target": "http://127.0.0.1:8828"
+    },
+    "/console": {
+      "target": "http://127.0.0.1:8810/console"
+    },
+    "/console/claude": {
+      "target": "http://127.0.0.1:8812/vps-console/claude"
+    },
+    "/console/hermes": {
+      "target": "http://127.0.0.1:8813/vps-console/hermes"
+    },
+    "/console/shell": {
+      "target": "http://127.0.0.1:8811/vps-console/shell"
+    },
+    "/contexts-preview": {
+      "target": "http://127.0.0.1:8947/contexts-preview"
+    },
+    "/daily-crush": {
+      "target": "http://127.0.0.1:8936"
+    },
+    "/downloads/archimedes-assistant": {
+      "target": "http://127.0.0.1:8890"
+    },
+    "/exploration-atlas": {
+      "target": "http://127.0.0.1:8892/exploration-atlas"
+    },
+    "/files": {
+      "target": "http://127.0.0.1:8954/files",
+      "override": "Cloudflare-safe route"
+    },
+    "/golden-frog-review": {
+      "target": "http://127.0.0.1:8972/golden-frog-review"
+    },
+    "/helm": {
+      "target": "http://127.0.0.1:8836"
+    },
+    "/helm-attention-map": {
+      "target": "http://127.0.0.1:8891/helm-attention-map"
+    },
+    "/helm-fable-preview": {
+      "target": "http://127.0.0.1:8930"
+    },
+    "/helm-next": {
+      "target": "http://127.0.0.1:8840"
+    },
+    "/hermes-lease-findings": {
+      "target": "http://127.0.0.1:8933"
+    },
+    "/hermesUI": {
+      "target": "http://127.0.0.1:8796"
+    },
+    "/iching": {
+      "target": "http://127.0.0.1:8797"
+    },
+    "/idea-queue": {
+      "target": "http://127.0.0.1:8792"
+    },
+    "/job-hunter": {
+      "target": "http://127.0.0.1:8898"
+    },
+    "/mizel-ux": {
+      "target": "http://127.0.0.1:8919"
+    },
+    "/model-performance": {
+      "target": "http://127.0.0.1:8946"
+    },
+    "/morning-previews": {
+      "target": "http://127.0.0.1:8841"
+    },
+    "/nesquena": {
+      "target": "http://127.0.0.1:8899"
+    },
+    "/phase-loom": {
+      "target": "http://127.0.0.1:8932"
+    },
+    "/reader": {
+      "target": "http://127.0.0.1:8795"
+    },
+    "/reading-playground": {
+      "target": "http://127.0.0.1:8953/reading-playground"
+    },
+    "/recall": {
+      "target": "http://127.0.0.1:8901/recall",
+      "override": "Cloudflare-safe route"
+    },
+    "/relationship-ledger": {
+      "target": "http://127.0.0.1:8847"
+    },
+    "/relationship-manager-c": {
+      "target": "http://127.0.0.1:8849/relationship-manager-c"
+    },
+    "/sanctuary": {
+      "target": "http://127.0.0.1:8838"
+    },
+    "/shopping-assistant": {
+      "target": "http://127.0.0.1:8826/shopping-assistant"
+    },
+    "/signal-feed": {
+      "target": "http://127.0.0.1:8801/signal-feed"
+    },
+    "/thai-cram": {
+      "target": "http://127.0.0.1:8803"
+    },
+    "/thailand-opportunity-radar": {
+      "target": "http://127.0.0.1:8900"
+    },
+    "/threadline": {
+      "target": "http://127.0.0.1:8848"
+    },
+    "/trackhunt": {
+      "target": "http://127.0.0.1:8815"
+    },
+    "/webtoon-mode-preview": {
+      "target": "http://127.0.0.1:8893"
+    },
+    "/wizard": {
+      "target": "http://127.0.0.1:8923/wizard"
+    },
+    "/wizard-social": {
+      "target": "http://127.0.0.1:9168",
+      "override": "Wizard Social fixed-path authenticated upstream"
+    },
+    "/wizard-apps-preview": {
+      "target": "http://127.0.0.1:8945"
+    },
+    "/wizard-desktop": {
+      "target": "http://127.0.0.1:8938/wizard-desktop"
+    },
+    "/wizard-os-business-lab": {
+      "target": "http://127.0.0.1:8853"
+    },
+    "/wizard-os-concept": {
+      "target": "http://127.0.0.1:8845"
+    },
+    "/wizard-os-knowledge-v2": {
+      "target": "http://127.0.0.1:8854"
+    },
+    "/wizard-os-three-tab": {
+      "target": "http://127.0.0.1:8863"
+    },
+    "/wizard-quest-preview": {
+      "target": "http://127.0.0.1:8965"
+    },
+    "/wizard-working-status": {
+      "target": "http://127.0.0.1:8857/wizard-working-status"
+    },
+    "/wizard001": {
+      "target": "http://127.0.0.1:8842/wizard001",
+      "override": "Cloudflare-safe route"
+    },
+    "/youtube-ideas": {
+      "target": "http://127.0.0.1:8829"
+    },
+    "/youtube-transcript": {
+      "target": "http://127.0.0.1:8831"
+    },
+    "/xero": {
+      "target": "http://127.0.0.1:9182/xero",
+      "override": "Private Auragin read-only Xero OAuth connector"
+    },
+    "/mizel": {
+      "target": "http://127.0.0.1:8788"
+    },
+    "/wizard-music-home": {
+      "target": "http://127.0.0.1:8991"
+    },
+    "/wizard-music-navidrome": {
+      "target": "http://127.0.0.1:8992"
+    }
+  }
+}

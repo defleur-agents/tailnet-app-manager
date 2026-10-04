@@ -1,0 +1,421 @@
+{
+  "version": 1,
+  "generatedAt": "2026-09-08T14:04:14Z",
+  "appCount": 51,
+  "apps": {
+    "/model-performance": {
+      "name": "Model Performance",
+      "shortName": "Model Metrics",
+      "icon192": "model-performance-192.png",
+      "icon512": "model-performance-512.png",
+      "iconMode": "source",
+      "iconSource": "/model-performance/icon-512.png"
+    },
+    "/agent-data": {
+      "name": "Agent Data Sources",
+      "shortName": "Agent Data Sources",
+      "icon192": "agent-data-192.png",
+      "icon512": "agent-data-512.png",
+      "iconMode": "source",
+      "iconSource": "/agent-data/assets/icon-512.png"
+    },
+    "/ai-inbox": {
+      "name": "Helm Inbox Shade Mock-up",
+      "shortName": "Helm Inbox Shade Mock-up",
+      "icon192": "ai-inbox-mockup-192.png",
+      "icon512": "ai-inbox-mockup-512.png",
+      "iconMode": "source",
+      "iconSource": "/ai-inbox/icon-512.png"
+    },
+    "/ai-reel-metrics-vault": {
+      "name": "Content Intelligence Vault",
+      "shortName": "Content Intelligence Vault",
+      "icon192": "ai-reel-metrics-vault-192.png",
+      "icon512": "ai-reel-metrics-vault-512.png",
+      "iconMode": "source",
+      "iconSource": "/apps/assets/app-ai-reel-metrics-vault.png"
+    },
+    "/alerts": {
+      "name": "Alerts",
+      "shortName": "Alerts",
+      "icon192": "alerts-192.png",
+      "icon512": "alerts-512.png",
+      "iconMode": "source",
+      "iconSource": "/apps/assets/app-alerts.png"
+    },
+    "/amazon-operator": {
+      "name": "Amazon Operator",
+      "shortName": "Amazon Operator",
+      "icon192": "amazon-operator-192.png",
+      "icon512": "amazon-operator-512.png",
+      "iconMode": "source",
+      "iconSource": "/apps/assets/app-amazon-operator.png"
+    },
+    "/archimedes-live": {
+      "name": "Archimedes Live",
+      "shortName": "Archimedes Live",
+      "icon192": "archimedes-live-192.png",
+      "icon512": "archimedes-live-512.png",
+      "iconMode": "source",
+      "iconSource": "/archimedes-live/icons/icon-512.png"
+    },
+    "/automation-roadmap": {
+      "name": "Automation $25K Roadmap",
+      "shortName": "Automation $25K Roadmap",
+      "icon192": "automation-roadmap-192.png",
+      "icon512": "automation-roadmap-512.png",
+      "iconMode": "source",
+      "iconSource": "/automation-roadmap/icon-192.png"
+    },
+    "/axm-divine-archive": {
+      "name": "AXM Divine Archive",
+      "shortName": "AXM Divine Archive",
+      "icon192": "axm-divine-archive-192.png",
+      "icon512": "axm-divine-archive-512.png",
+      "iconMode": "source",
+      "iconSource": "/axm-divine-archive/static/icons/icon-512.png"
+    },
+    "/bitcoin-flow-model": {
+      "name": "Bitcoin Flow Model",
+      "shortName": "Bitcoin Flow Model",
+      "icon192": "bitcoin-flow-model-192.png",
+      "icon512": "bitcoin-flow-model-512.png",
+      "iconMode": "source",
+      "iconSource": "/apps/assets/app-flow-balance.png"
+    },
+    "/buzz-workspace": {
+      "name": "Buzz Workspace",
+      "shortName": "Buzz Workspace",
+      "icon192": "buzz-workspace-192.png",
+      "icon512": "buzz-workspace-512.png",
+      "iconMode": "source",
+      "iconSource": "/apps/assets/app-buzz-workspace.png"
+    },
+    "/capture": {
+      "name": "Capture",
+      "shortName": "Capture",
+      "icon192": "capture-192.png",
+      "icon512": "capture-512.png",
+      "iconMode": "source",
+      "iconSource": "/apps/assets/app-capture.png"
+    },
+    "/cavi-intelligence": {
+      "name": "Cavi Client Intelligence",
+      "shortName": "Cavi Client Intelligence",
+      "icon192": "cavi-intelligence-192.png",
+      "icon512": "cavi-intelligence-512.png",
+      "iconMode": "generated-label",
+      "iconSource": "/cavi-intelligence/icon.svg",
+      "iconLabel": "CCI"
+    },
+    "/cinequeue": {
+      "name": "CineQueue",
+      "shortName": "CineQueue",
+      "icon192": "cinequeue-192.png",
+      "icon512": "cinequeue-512.png",
+      "iconMode": "source",
+      "iconSource": "/cinequeue/icon-512.png"
+    },
+    "/congress-preview": {
+      "name": "Congress Preview",
+      "shortName": "Congress Preview",
+      "icon192": "congress-preview-192.png",
+      "icon512": "congress-preview-512.png",
+      "iconMode": "generated-label",
+      "iconLabel": "CP"
+    },
+    "/console": {
+      "name": "Console",
+      "shortName": "Console",
+      "icon192": "console-192.png",
+      "icon512": "console-512.png",
+      "iconMode": "source",
+      "iconSource": "/console/icon-512.png"
+    },
+    "/daily-crush": {
+      "name": "Daily Crush",
+      "shortName": "Daily Crush",
+      "icon192": "daily-crush-192.png",
+      "icon512": "daily-crush-512.png",
+      "iconMode": "source",
+      "iconSource": "/daily-crush/icon-512.png"
+    },
+    "/exploration-atlas": {
+      "name": "Exploration Atlas",
+      "shortName": "Exploration Atlas",
+      "icon192": "exploration-atlas-192.png",
+      "icon512": "exploration-atlas-512.png",
+      "iconMode": "source",
+      "iconSource": "/exploration-atlas/icon-192.png"
+    },
+    "/files": {
+      "name": "Files",
+      "shortName": "Files",
+      "icon192": "files-192.png",
+      "icon512": "files-512.png",
+      "iconMode": "source",
+      "iconSource": "/files/icon-512.png",
+      "nativePwa": true,
+      "manifestName": "Files"
+    },
+    "/helm": {
+      "name": "Helm",
+      "shortName": "Helm",
+      "icon192": "helm-192.png",
+      "icon512": "helm-512.png",
+      "iconMode": "source",
+      "iconSource": "/apps/assets/app-helm.png",
+      "nativePwa": true,
+      "manifestName": "Helm \u2014 Telegram Workspace"
+    },
+    "/helm-attention-map": {
+      "name": "Helm Stars \u2014 Priority Constellation Mock-up",
+      "shortName": "Helm Stars \u2014 Priority Constell",
+      "icon192": "helm-attention-map-192.png",
+      "icon512": "helm-attention-map-512.png",
+      "iconMode": "source",
+      "iconSource": "/helm-attention-map/icon-512.png"
+    },
+    "/helm-fable-preview": {
+      "name": "Helm \u2014 Cleaned Current UX",
+      "shortName": "Helm \u2014 Cleaned Current UX",
+      "icon192": "helm-fable-preview-192.png",
+      "icon512": "helm-fable-preview-512.png",
+      "iconMode": "source",
+      "iconSource": "/apps/assets/app-helm.png"
+    },
+    "/helm-next": {
+      "name": "Helm Next \u2014 Staging",
+      "shortName": "Helm Next \u2014 Staging",
+      "icon192": "helm-next-192.png",
+      "icon512": "helm-next-512.png",
+      "iconMode": "source",
+      "iconSource": "/helm-next/icons/icon-512.png"
+    },
+    "/hermes-lease-findings": {
+      "name": "Hermes Lease Findings",
+      "shortName": "Hermes Lease Findings",
+      "icon192": "hermes-lease-findings-192.png",
+      "icon512": "hermes-lease-findings-512.png",
+      "iconMode": "source",
+      "iconSource": "/hermes-lease-findings/icon-512.png"
+    },
+    "/hermesUI": {
+      "name": "HermesUI \u2014 Tinfoil",
+      "shortName": "HermesUI \u2014 Tinfoil",
+      "icon192": "hermesui-tinfoil-192.png",
+      "icon512": "hermesui-tinfoil-512.png",
+      "iconMode": "source",
+      "iconSource": "/hermesUI/static/wizard-hat-192.png"
+    },
+    "/iching": {
+      "name": "I Ching",
+      "shortName": "I Ching",
+      "icon192": "iching-192.png",
+      "icon512": "iching-512.png",
+      "iconMode": "source",
+      "iconSource": "/apps/assets/app-iching.png"
+    },
+    "/idea-queue": {
+      "name": "Idea Queue",
+      "shortName": "Idea Queue",
+      "icon192": "ideaqueue-192.png",
+      "icon512": "ideaqueue-512.png",
+      "iconMode": "source",
+      "iconSource": "/apps/assets/app-followthrough.png"
+    },
+    "/job-hunter": {
+      "name": "Job Assistant",
+      "shortName": "Job Assistant",
+      "icon192": "job-hunter-192.png",
+      "icon512": "job-hunter-512.png",
+      "iconMode": "source",
+      "iconSource": "/job-hunter/icon-512.png"
+    },
+    "/morning-previews": {
+      "name": "Morning Previews",
+      "shortName": "Morning Previews",
+      "icon192": "morning-previews-192.png",
+      "icon512": "morning-previews-512.png",
+      "iconMode": "generated-label",
+      "iconLabel": "MP"
+    },
+    "/nesquena": {
+      "name": "WebUI by Nesquena",
+      "shortName": "WebUI by Nesquena",
+      "icon192": "nesquena-192.png",
+      "icon512": "nesquena-512.png",
+      "iconMode": "source",
+      "iconSource": "/nesquena/static/favicon-512.png"
+    },
+    "/phase-loom": {
+      "name": "Phase Loom",
+      "shortName": "Phase Loom",
+      "icon192": "phase-loom-192.png",
+      "icon512": "phase-loom-512.png",
+      "iconMode": "source",
+      "iconSource": "/phase-loom/icon-512.png"
+    },
+    "/reader": {
+      "name": "Reader",
+      "shortName": "Reader",
+      "icon192": "reader-192.png",
+      "icon512": "reader-512.png",
+      "iconMode": "source",
+      "iconSource": "/reader/icon-512.png"
+    },
+    "/recall": {
+      "name": "Recall",
+      "shortName": "Recall",
+      "icon192": "recall-192.png",
+      "icon512": "recall-512.png",
+      "iconMode": "source",
+      "iconSource": "/recall/icon-192.png"
+    },
+    "/relationship-ledger": {
+      "name": "Relationship Ledger Mock-up",
+      "shortName": "Relationship Ledger Mock-up",
+      "icon192": "relationship-ledger-192.png",
+      "icon512": "relationship-ledger-512.png",
+      "iconMode": "source",
+      "iconSource": "/relationship-ledger/icon-192.png"
+    },
+    "/relationship-manager-c": {
+      "name": "Relationship Manager C",
+      "shortName": "Relationship Manager C",
+      "icon192": "relationship-manager-c-192.png",
+      "icon512": "relationship-manager-c-512.png",
+      "iconMode": "generated-label",
+      "iconLabel": "RMC"
+    },
+    "/sanctuary": {
+      "name": "Hermes Sanctuary",
+      "shortName": "Hermes Sanctuary",
+      "icon192": "hermes-sanctuary-192.png",
+      "icon512": "hermes-sanctuary-512.png",
+      "iconMode": "source",
+      "iconSource": "/apps/assets/app-hermes-sanctuary.png"
+    },
+    "/shopping-assistant": {
+      "name": "Shopping Assistant",
+      "shortName": "Shopping Assistant",
+      "icon192": "shopping-assistant-192.png",
+      "icon512": "shopping-assistant-512.png",
+      "iconMode": "source",
+      "iconSource": "/shopping-assistant/icon-512.png"
+    },
+    "/signal-feed": {
+      "name": "Signal Feed",
+      "shortName": "Signal Feed",
+      "icon192": "signal-feed-192.png",
+      "icon512": "signal-feed-512.png",
+      "iconMode": "source",
+      "iconSource": "/signal-feed/icon-512.png"
+    },
+    "/thai-cram": {
+      "name": "Thai Cram",
+      "shortName": "Thai Cram",
+      "icon192": "thai-crash-cards-192.png",
+      "icon512": "thai-crash-cards-512.png",
+      "iconMode": "source",
+      "iconSource": "/apps/assets/app-thai-cram.png"
+    },
+    "/thailand-opportunity-radar": {
+      "name": "Thailand Economic Opportunity Radar",
+      "shortName": "Thailand Economic Opportunity ",
+      "icon192": "thailand-opportunity-radar-192.png",
+      "icon512": "thailand-opportunity-radar-512.png",
+      "iconMode": "source",
+      "iconSource": "/thailand-opportunity-radar/icon-512.png"
+    },
+    "/threadline": {
+      "name": "Threadline",
+      "shortName": "Threadline",
+      "icon192": "threadline-192.png",
+      "icon512": "threadline-512.png",
+      "iconMode": "generated-label",
+      "iconLabel": "TH"
+    },
+    "/trackhunt": {
+      "name": "TrackHunt",
+      "shortName": "TrackHunt",
+      "icon192": "trackhunt-192.png",
+      "icon512": "trackhunt-512.png",
+      "iconMode": "source",
+      "iconSource": "/trackhunt/icons/icon-512.png"
+    },
+    "/wizard": {
+      "name": "Wizard",
+      "shortName": "Wizard",
+      "icon192": "wizard-192.png",
+      "icon512": "wizard-512.png",
+      "iconMode": "generated-label",
+      "iconLabel": "WI"
+    },
+    "/wizard-desktop": {
+      "name": "Wizard Desktop Mockup",
+      "shortName": "Wizard Desktop Mockup",
+      "icon192": "wizard-desktop-mockup-192.png",
+      "icon512": "wizard-desktop-mockup-512.png",
+      "iconMode": "source",
+      "iconSource": "/wizard-desktop/icon-512.png"
+    },
+    "/wizard-os-business-lab": {
+      "name": "WizardOS Business Lab",
+      "shortName": "WizardOS Business Lab",
+      "icon192": "wizard-os-business-lab-192.png",
+      "icon512": "wizard-os-business-lab-512.png",
+      "iconMode": "source",
+      "iconSource": "/wizard-os-business-lab/icon-512.png"
+    },
+    "/wizard-os-concept": {
+      "name": "WizardOS UX Concept",
+      "shortName": "WizardOS UX Concept",
+      "icon192": "wizard-os-concept-192.png",
+      "icon512": "wizard-os-concept-512.png",
+      "iconMode": "source",
+      "iconSource": "/wizard-os-concept/icon-192.png"
+    },
+    "/wizard-os-knowledge-v2": {
+      "name": "WizardOS Knowledge V2",
+      "shortName": "WizardOS Knowledge V2",
+      "icon192": "wizard-os-knowledge-v2-192.png",
+      "icon512": "wizard-os-knowledge-v2-512.png",
+      "iconMode": "source",
+      "iconSource": "/wizard-os-knowledge-v2/icon-512.png"
+    },
+    "/wizard-os-three-tab": {
+      "name": "Wizard OS Three-tab UX Mockup",
+      "shortName": "Wizard OS Three-tab UX Mockup",
+      "icon192": "wizard-os-three-tab-192.png",
+      "icon512": "wizard-os-three-tab-512.png",
+      "iconMode": "source",
+      "iconSource": "/wizard-os-three-tab/icons/icon-512.png"
+    },
+    "/wizard001": {
+      "name": "Wizard001 Profile",
+      "shortName": "Wizard001 Profile",
+      "icon192": "wizard001-192.png",
+      "icon512": "wizard001-512.png",
+      "iconMode": "generated-label",
+      "iconSource": "/wizard001/icon-192.png",
+      "iconLabel": "WP"
+    },
+    "/youtube-ideas": {
+      "name": "YouTube Ideas",
+      "shortName": "YouTube Ideas",
+      "icon192": "youtube-ideas-192.png",
+      "icon512": "youtube-ideas-512.png",
+      "iconMode": "source",
+      "iconSource": "/apps/assets/app-youtube-ideas.png"
+    },
+    "/youtube-transcript": {
+      "name": "YouTube Transcript",
+      "shortName": "YouTube Transcript",
+      "icon192": "youtube-transcript-192.png",
+      "icon512": "youtube-transcript-512.png",
+      "iconMode": "source",
+      "iconSource": "/apps/assets/app-youtube-transcript.png"
+    }
+  }
+}
