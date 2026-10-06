@@ -2,6 +2,27 @@
   "version": 1,
   "source": "Explicit personal-app migration; existing origins retained for rollback",
   "routes": {
+    "/command-center": {
+      "target": "http://127.0.0.1:8805/"
+    },
+    "/orb-origin": {
+      "target": "http://127.0.0.1:8862/"
+    },
+    "/secure-intake": {
+      "target": "http://127.0.0.1:8805/secure-intake"
+    },
+    "/signal-digest": {
+      "target": "http://127.0.0.1:8801/signal-digest"
+    },
+    "/signal-garden": {
+      "target": "http://127.0.0.1:8801/signal-garden"
+    },
+    "/watchlist": {
+      "target": "http://127.0.0.1:8801/watchlist"
+    },
+    "/v1/drop": {
+      "target": "http://127.0.0.1:8862/v1/drop"
+    },
     "/asset-sharing-review": {
       "target": "http://127.0.0.1:9173/asset-sharing-review",
       "override": "Private asset-sharing workflow browser review; read-only"
