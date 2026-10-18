@@ -17,6 +17,17 @@ const CONFIG_PATH = process.env.CLOUDFLARE_ROUTE_CONFIG || "/home/telos/apps/tai
 const PWA_CATALOG_PATH = process.env.CLOUDFLARE_PWA_CATALOG || "/home/telos/apps/tailnet-app-manager/cloudflare-pwa-apps.json";
 const PWA_ICON_ROOT = process.env.CLOUDFLARE_PWA_ICON_ROOT || "/home/telos/apps/tailnet-app-manager/pwa-icons";
 const PUBLIC_ORIGIN = (process.env.CLOUDFLARE_PUBLIC_ORIGIN || "https://apps.wizard001.com").replace(/\/$/, "");
+// Every browser-facing origin this gateway answers on (primary first). Requests are answered on the
+// origin they arrived on, so a hostname change never strands a page on the other one.
+const PUBLIC_ORIGINS = new Set([PUBLIC_ORIGIN, ...String(process.env.CLOUDFLARE_PUBLIC_ORIGIN_ALIASES || "")
+  .split(",").map((value) => value.trim().replace(/\/$/, "")).filter(Boolean)]);
+
+function requestOrigin(request) {
+  const host = String(request.headers["x-forwarded-host"] || request.headers.host || "").split(",")[0].trim();
+  const candidate = `https://${host}`;
+  return PUBLIC_ORIGINS.has(candidate) ? candidate : PUBLIC_ORIGIN;
+}
+const CANONICAL_ORIGIN_ROUTES = new Set(['/wizard-social', '/secure-intake']);
 const MAX_HTML_BYTES = 64 * 1024 * 1024;
 
 function loadConfig() {
@@ -60,12 +71,13 @@ function targetFor(route, requestUrl) {
 
 function ingressAllowed(request, websocket = false) {
   const origin = request.headers.origin;
-  if (origin && origin !== PUBLIC_ORIGIN) return false;
+  if (origin && origin !== requestOrigin(request)) return false;
   if (websocket && !origin && request.headers['sec-fetch-site']) return false;
   if (!['GET','HEAD','OPTIONS'].includes(request.method) && request.headers['sec-fetch-site'] === 'cross-site') return false;
   return true;
 }
 function outgoingHeaders(request, route, target, websocket = false) {
+  const publicOrigin = requestOrigin(request);
   const headers = { ...request.headers };
   // Custom-domain TCP ingress authenticates the network, not caller-supplied
   // Cloudflare or Serve identity headers. Never forward those assertions.
@@ -75,13 +87,16 @@ function outgoingHeaders(request, route, target, websocket = false) {
   }
   // Validate browser Origin at ingress, then bridge the legacy app allowlist.
   // Signed-URL applications keep their canonical private Origin untouched.
-  if (headers.origin === PUBLIC_ORIGIN && route.path !== '/wizard-social') {
+  // Apps that validate the canonical private Origin themselves (Secret Drop's exact-origin
+  // submission guard) receive it untouched; legacy apps still get the old allowlisted origin.
+  const keepOrigin = CANONICAL_ORIGIN_ROUTES.has(route.path);
+  if (headers.origin === publicOrigin && !keepOrigin) {
     headers.origin = 'https://apps.wizard001.com';
   }
-  if (route.path !== '/wizard-social' && headers.referer?.startsWith(PUBLIC_ORIGIN + '/')) headers.referer = headers.referer.replace(PUBLIC_ORIGIN, 'https://apps.wizard001.com');
-  const backendOrigin = route.path === '/wizard-social' || websocket ? PUBLIC_ORIGIN : 'https://apps.wizard001.com';
+  if (!keepOrigin && headers.referer?.startsWith(publicOrigin + '/')) headers.referer = headers.referer.replace(publicOrigin, 'https://apps.wizard001.com');
+  const backendOrigin = keepOrigin || websocket ? publicOrigin : 'https://apps.wizard001.com';
   headers.host = websocket || ['/nesquena', '/hermesUI'].includes(route.path) ? new URL(backendOrigin).host : target.host;
-  if (websocket && request.headers.origin) headers.origin = PUBLIC_ORIGIN;
+  if (websocket && request.headers.origin) headers.origin = publicOrigin;
   headers["x-forwarded-host"] = new URL(backendOrigin).host;
   headers["x-forwarded-proto"] = "https";
   headers["x-forwarded-prefix"] = route.path;
@@ -94,15 +109,15 @@ function outgoingHeaders(request, route, target, websocket = false) {
   return headers;
 }
 
-function rewriteLocation(location, route, target) {
+function rewriteLocation(location, route, target, publicOrigin = PUBLIC_ORIGIN) {
   if (!location) return location;
   try {
     const resolved = new URL(location, target);
-    if (resolved.origin === "https://apps.wizard001.com") return PUBLIC_ORIGIN + resolved.pathname + resolved.search + resolved.hash;
+    if (resolved.origin === "https://apps.wizard001.com") return publicOrigin + resolved.pathname + resolved.search + resolved.hash;
     if (resolved.host !== target.host) return location;
     const targetBase = route.target.pathname.replace(/\/$/, "");
     const suffix = resolved.pathname.startsWith(targetBase) ? resolved.pathname.slice(targetBase.length) : resolved.pathname;
-    return `${PUBLIC_ORIGIN}${route.path === "/" ? "" : route.path}${suffix || "/"}${resolved.search}${resolved.hash}`;
+    return `${publicOrigin}${route.path === "/" ? "" : route.path}${suffix || "/"}${resolved.search}${resolved.hash}`;
   } catch {
     return location;
   }
@@ -199,7 +214,7 @@ const server = http.createServer((request, response) => {
     return;
   }
   if (incoming.pathname === route.path && !incoming.pathname.endsWith('/') && ['GET','HEAD'].includes(request.method)) {
-    response.writeHead(308, { location: `${PUBLIC_ORIGIN}${incoming.pathname}/${incoming.search}` });
+    response.writeHead(308, { location: `${requestOrigin(request)}${incoming.pathname}/${incoming.search}` });
     response.end(); return;
   }
   const target = targetFor(route, request.url || "/");
@@ -209,7 +224,7 @@ const server = http.createServer((request, response) => {
     headers: outgoingHeaders(request, route, target),
   }, (upstreamResponse) => {
     const headers = { ...upstreamResponse.headers };
-    if (headers.location) headers.location = rewriteLocation(headers.location, route, target);
+    if (headers.location) headers.location = rewriteLocation(headers.location, route, target, requestOrigin(request));
     delete headers["content-security-policy-report-only"];
     if (shouldInjectPwa(request, upstreamResponse, pwaApp)) {
       writeInjectedHtml(response, upstreamResponse, pwaApp);
